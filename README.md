@@ -68,4 +68,4 @@ The public web surface at [aedin.io](https://aedin.io) is live. The multi-critic
 
 ## Contact
 
-[contact@aedin.io](mailto:contact@aedin.io) · [aedin.io](https://aedin.io) · University of Guam, Sustainable Agriculture program
+[contact@aedin.io](mailto:contact@aedin.io) · [aedin.io](https://aedin.io)
