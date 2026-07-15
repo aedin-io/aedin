@@ -1,0 +1,13 @@
+[
+  {
+    "grin_accession": "PI 1",
+    "parent_scientific_name": "Solanum lycopersicum",
+    "variety_entity_id": 2,
+    "variety_name": "Walter",
+    "claim_type": "disease_resistance",
+    "attacker_name": "Fusarium wilt",
+    "resistance_level": "strong",
+    "coevolution_structure": "gene_for_gene",
+    "source_quote": "First tomato variety with resistance to the Fusarium wilt pathogen. Resistant to Fusarium Race 1 and Race 2"
+  }
+]

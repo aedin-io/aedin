@@ -1,0 +1,219 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getClaimById, getClaimSiblings, getAllServableClaimIds, getRevisionsForClaim } from '../../lib/queries';
+import { composeClaimSentence } from '../../lib/claim-sentence';
+import { isListShapedQuote } from '../../lib/sibling-list';
+import CiteThis from '../../components/CiteThis.astro';
+import ReportError from '../../components/ReportError.astro';
+import RevisionHistory from '../../components/RevisionHistory.astro';
+
+export async function getStaticPaths() {
+  const ids = getAllServableClaimIds();
+  return ids.map(id => ({ params: { id: String(id) } }));
+}
+
+const { id } = Astro.params;
+const claim = getClaimById(Number(id));
+
+if (!claim) {
+  return new Response(null, { status: 404 });
+}
+
+// Build a citation string in academic style:
+//   <Subject> <interaction> <Object> (<Author>, <Year>, p. <page>)
+const subjectName = claim.subject_scientific_name ?? 'Unknown subject';
+const objectName = claim.object_scientific_name ?? '';
+const interactionLabel = claim.interaction_type_raw?.replace(/_/g, ' ') ?? claim.interaction_category ?? 'interaction';
+
+const authorYearChunk = [
+  claim.source_authors,
+  claim.source_year ? `(${claim.source_year})` : null
+].filter(Boolean).join(' ');
+
+const pageTitle = `${subjectName} → ${objectName || interactionLabel}`;
+const revisions = getRevisionsForClaim(Number(id));
+const siblings = getClaimSiblings(claim);
+const headline = composeClaimSentence(
+  claim.interaction_category,
+  claim.subject_common_name || claim.subject_scientific_name,
+  claim.object_common_name || claim.object_scientific_name,
+);
+const otherPartners = siblings.filter(s => s.id !== claim.subject_entity_id && s.id !== claim.object_entity_id);
+const quoteIsListShaped = isListShapedQuote(claim.source_quote);
+---
+
+<Layout
+  title={pageTitle}
+  description={`${subjectName}${objectName ? ` ${interactionLabel} ${objectName}` : ` — ${interactionLabel}`}${authorYearChunk ? ` — ${authorYearChunk}` : ''}. AI-consensus-verified agroecological claim with verbatim source quote.`}
+>
+  <article
+    class="max-w-3xl mx-auto px-6 py-10"
+    data-pagefind-body
+    data-pagefind-meta="kind:claim"
+    data-pagefind-filter="Kind:claim"
+  >
+    <header class="mb-6">
+      <p class="text-xs uppercase tracking-wide text-earth-700 mb-1">Claim · #{claim.id}</p>
+      <h1 class="text-2xl font-semibold text-nature-900 mb-3">
+        {claim.subject_slug ? (
+          <a href={`/entity/${claim.subject_slug}`} class="italic text-nature-900 hover:underline decoration-nature-700/40">{subjectName}</a>
+        ) : (
+          <span class="italic">{subjectName}</span>
+        )}
+        {claim.interaction_type_raw && (
+          <span class="text-base font-normal text-earth-700"> · {claim.interaction_type_raw.replace(/_/g, ' ')}</span>
+        )}
+        {claim.object_scientific_name && (
+          <>
+            <span class="text-base font-normal text-earth-700"> · </span>
+            {claim.object_slug ? (
+              <a href={`/entity/${claim.object_slug}`} class="italic text-nature-900 hover:underline decoration-nature-700/40">{objectName}</a>
+            ) : (
+              <span class="italic">{objectName}</span>
+            )}
+          </>
+        )}
+      </h1>
+      {claim.interaction_category && (
+        <p class="text-xs uppercase tracking-wide text-nature-700">{claim.interaction_category.replace(/_/g, ' ')}{claim.effect_direction && ` · effect: ${claim.effect_direction}`}</p>
+      )}
+      {claim.interaction_type_globi && (
+        <p class="mt-2 text-xs">
+          <span class="px-2 py-0.5 bg-nature-50 border border-nature-700/30 rounded font-mono text-nature-900" title="GloBI Relations Ontology term — used for push-back to the public Global Biotic Interactions corpus">
+            {claim.interaction_type_globi}
+          </span>
+          <span class="ml-2 text-earth-700">GloBI relation</span>
+        </p>
+      )}
+    </header>
+
+    <section class="bg-white border border-nature-700/15 rounded p-5 mb-8">
+      <p class="text-base font-medium text-nature-900 mb-3">{headline}</p>
+      <p class="text-xs uppercase tracking-wide text-earth-700 mb-2">
+        Verbatim source quote{quoteIsListShaped && (
+          <span class="ml-2 normal-case text-[11px] px-1.5 py-0.5 rounded bg-earth-100 text-earth-700">from a list/table in the source</span>
+        )}
+      </p>
+      <blockquote class="text-base text-nature-900 border-l-4 border-nature-700/40 pl-4 italic mb-4 leading-relaxed">
+        &ldquo;{claim.source_quote}&rdquo;
+      </blockquote>
+      {otherPartners.length > 0 && (
+        <p class="text-sm text-earth-800 mb-4">
+          Other partners recorded in the same source passage:{' '}
+          {otherPartners.map((s, i) => (
+            <>{i > 0 ? ', ' : ''}{s.slug
+              ? <a href={`/entity/${s.slug}`} class="text-nature-700 hover:underline">{s.name}</a>
+              : <span>{s.name}</span>}</>
+          ))}
+        </p>
+      )}
+      <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm border-t border-nature-700/10 pt-4">
+        {claim.source_title && (
+          <div class="md:col-span-2">
+            <dt class="text-xs uppercase tracking-wide text-earth-700">Source</dt>
+            <dd class="text-sm text-nature-900">
+              {claim.source_slug ? (
+                <a href={`/source/${claim.source_slug}`} class="hover:underline">{claim.source_title}</a>
+              ) : (
+                claim.source_title
+              )}
+            </dd>
+          </div>
+        )}
+        {claim.source_authors && (
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-earth-700">Authors</dt>
+            <dd class="text-sm text-nature-900">{claim.source_authors}</dd>
+          </div>
+        )}
+        {claim.source_year && (
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-earth-700">Year</dt>
+            <dd class="text-sm text-nature-900">{claim.source_year}</dd>
+          </div>
+        )}
+        {claim.source_publication && (
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-earth-700">Publication</dt>
+            <dd class="text-sm text-nature-900">{claim.source_publication}</dd>
+          </div>
+        )}
+        {claim.source_page && (
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-earth-700">Page</dt>
+            <dd class="text-sm text-nature-900">{claim.source_page}</dd>
+          </div>
+        )}
+        {claim.source_license && (
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-earth-700">License</dt>
+            <dd class="text-sm text-nature-900">{claim.source_license}</dd>
+          </div>
+        )}
+      </dl>
+      {claim.source_url && (
+        <p class="mt-4 text-sm">
+          <a href={claim.source_url} class="text-nature-700 hover:underline" rel="noopener" target="_blank">Read source&nbsp;↗</a>
+        </p>
+      )}
+    </section>
+
+    {claim.critic_verdicts && (
+      <section class="mb-8">
+        <h2 class="text-sm uppercase tracking-wide text-earth-700 mb-2">AI critic verdicts</h2>
+        <ul class="bg-white border border-nature-700/15 rounded p-4 space-y-2">
+          {claim.critic_verdicts.split('\n').filter(Boolean).map(line => {
+            const [name, verdict, reasoning] = line.split('|');
+            const verdictColor = verdict === 'plausible' ? 'text-green-700' : verdict === 'implausible' ? 'text-red-700' : verdict === 'uncertain' ? 'text-yellow-700' : 'text-earth-700';
+            return (
+              <li class="text-xs">
+                <span class="font-mono text-nature-900">{name}</span>
+                <span class={`ml-2 uppercase tracking-wide ${verdictColor}`}>· {verdict}</span>
+                {reasoning && <p class="mt-1 text-earth-700 italic ml-4">&ldquo;{reasoning}&rdquo;</p>}
+              </li>
+            );
+          })}
+        </ul>
+        <p class="mt-2 text-xs text-earth-700 italic">
+          This claim was promoted to public visibility because at least 2 independent AI critics agreed it was plausible, and none flagged it implausible. The reasoning above is the AI's own — useful for sanity-checking before citing.
+        </p>
+      </section>
+    )}
+
+    <RevisionHistory revisions={revisions} />
+
+    <section class="mb-8 max-w-md">
+      <CiteThis
+        kind="claim"
+        id={claim.id}
+        title={`AEDIN claim #${claim.id}: ${subjectName}${objectName ? ' → ' + objectName : ''}`}
+        authors={claim.source_authors}
+        year={claim.source_year}
+        publication={claim.source_title}
+        url={`https://aedin.io/claim/${claim.id}`}
+      />
+      <ReportError context={`claim #${claim.id}`} />
+    </section>
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "ClaimReview",
+      "url": `https://aedin.io/claim/${claim.id}`,
+      "claimReviewed": claim.source_quote,
+      "itemReviewed": {
+        "@type": "Claim",
+        "appearance": claim.source_title,
+        "author": { "@type": "Organization", "name": claim.source_authors || "Unknown" }
+      },
+      "author": { "@type": "Organization", "name": "AEDIN multi-critic consensus" },
+      "reviewRating": {
+        "@type": "Rating",
+        "ratingValue": "consensus-verified",
+        "alternateName": "≥2 AI specialty critics agree on plausible; none flag implausible"
+      }
+    })} />
+
+    <p class="text-xs text-earth-700">
+      AI-consensus-verified by ≥2 independent specialty critics. Verify against the verbatim quote above before publishing or citing.
+    </p>
+  </article>
+</Layout>

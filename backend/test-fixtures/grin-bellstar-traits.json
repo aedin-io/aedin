@@ -1,0 +1,11 @@
+[
+  { "grin_accession": "PI 2", "parent_scientific_name": "Solanum lycopersicum", "variety_entity_id": null,
+    "variety_name": "Bellstar", "trait_name": "growth_determinacy", "value": "determinate",
+    "source_quote": "Determinate." },
+  { "grin_accession": "PI 2", "parent_scientific_name": "Solanum lycopersicum", "variety_entity_id": null,
+    "variety_name": "Bellstar", "trait_name": "days_to_harvest", "value": 70, "unit": "days",
+    "source_quote": "70 days." },
+  { "grin_accession": "PI 2", "parent_scientific_name": "Solanum lycopersicum", "variety_entity_id": null,
+    "variety_name": "Bellstar", "trait_name": "produce_weight_g", "value": {"min": 113, "max": 142}, "unit": "g",
+    "source_quote": "4 to 5 ounce tomatoes" }
+]

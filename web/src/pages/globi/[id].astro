@@ -1,0 +1,88 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getGlobiClaimById } from '../../lib/queries-d1';
+import CiteThis from '../../components/CiteThis.astro';
+import ReportError from '../../components/ReportError.astro';
+
+export const prerender = false;
+
+const { id } = Astro.params;
+// GloBI claim ids are integer PKs — reject non-numeric ids up front (a 404 without
+// a wasted D1 round-trip, and explicit intent rather than relying on NaN→NULL binding).
+if (!id || !/^\d+$/.test(id)) return new Response(null, { status: 404 });
+const DB = Astro.locals.runtime.env.DB;
+const claim = await getGlobiClaimById(DB, Number(id));
+if (!claim) return new Response(null, { status: 404 });
+
+const subjectName = claim.subjectName ?? 'Unknown';
+const objectName = claim.objectName ?? '';
+const verb = (claim.verb ?? claim.category ?? 'interacts with').replace(/_/g, ' ');
+const doi = claim.referenceDoi && /^10\./.test(claim.referenceDoi) ? claim.referenceDoi : null;
+const pageTitle = `${subjectName} ${verb}${objectName ? ' ' + objectName : ''}`;
+
+// Edge-cache the SSR HTML (data refresh = redeploy), matching the entity pages.
+Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=86400');
+---
+
+<Layout
+  title={`GloBI interaction #${claim.id}`}
+  description={`${pageTitle} — aggregated GloBI interaction record with locality provenance. Not independently verified.`}
+  noindex={true}
+>
+  <article class="max-w-3xl mx-auto px-6 py-10" data-pagefind-ignore>
+    <header class="mb-6">
+      <p class="text-xs uppercase tracking-wide text-earth-700 mb-1">GloBI interaction · #{claim.id}</p>
+      <h1 class="text-2xl font-semibold text-nature-900 mb-3">
+        {claim.subjectSlug
+          ? <a href={`/entity/${claim.subjectSlug}`} class="italic text-nature-900 hover:underline decoration-nature-700/40">{subjectName}</a>
+          : <span class="italic">{subjectName}</span>}
+        <span class="text-base font-normal text-earth-700"> · {verb}</span>
+        {objectName && (claim.objectSlug
+          ? <><span class="text-base font-normal text-earth-700"> · </span><a href={`/entity/${claim.objectSlug}`} class="italic text-nature-900 hover:underline decoration-nature-700/40">{objectName}</a></>
+          : <><span class="text-base font-normal text-earth-700"> · </span><span class="italic">{objectName}</span></>)}
+      </h1>
+      {claim.category && (
+        <p class="text-xs uppercase tracking-wide text-nature-700">{claim.category.replace(/_/g, ' ')}</p>
+      )}
+    </header>
+
+    <div class="bg-amber-50 border border-amber-200 rounded p-4 text-sm text-amber-900 mb-8">
+      Aggregated via <a href="https://www.globalbioticinteractions.org/" class="underline" rel="noopener nofollow" target="_blank">GloBI</a> —
+      <strong>not independently verified</strong> by AEDIN's literature-extraction pipeline.
+      Treat this as a pointer to the primary source below, not a citable AEDIN claim.
+    </div>
+
+    {claim.referenceCitation && (
+      <section class="bg-white border border-nature-700/15 rounded p-5 mb-8">
+        <p class="text-xs uppercase tracking-wide text-earth-700 mb-2">Reference</p>
+        <p class="text-sm text-nature-900">{claim.referenceCitation}</p>
+        {doi && (
+          <p class="mt-2 text-sm">
+            <a href={`https://doi.org/${doi}`} class="text-nature-700 hover:underline" rel="noopener" target="_blank">https://doi.org/{doi} ↗</a>
+          </p>
+        )}
+      </section>
+    )}
+
+    {claim.localities.length > 0 && (
+      <section class="mb-8">
+        <h2 class="text-sm uppercase tracking-wide text-earth-700 mb-2">Localities ({claim.localities.length})</h2>
+        <ul class="bg-white border border-nature-700/15 rounded p-4 text-sm text-nature-900 sm:columns-2 gap-6">
+          {claim.localities.map(l => (
+            <li>{l.country}{l.subdivision ? ` · ${l.subdivision}` : ''}</li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    <section class="mb-8 max-w-md">
+      <CiteThis
+        kind="globi"
+        id={claim.id}
+        title={`AEDIN GloBI interaction #${claim.id}: ${subjectName}${objectName ? ' → ' + objectName : ''}`}
+        url={`https://aedin.io/globi/${claim.id}`}
+      />
+      <ReportError context={`GloBI interaction #${claim.id}`} />
+    </section>
+  </article>
+</Layout>

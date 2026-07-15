@@ -1,0 +1,64 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { getEntityBySlug, getVarietyTypeCounts, getVarietiesForSpecies } from '../../../lib/queries-d1';
+export const prerender = false;
+
+const { slug } = Astro.params;
+const DB = Astro.locals.runtime.env.DB;
+const result = await getEntityBySlug(DB, slug!);
+if (!result) return new Response(null, { status: 404 });
+const { entity } = result;
+
+const url = new URL(Astro.request.url);
+const type = url.searchParams.get('type') || undefined;
+const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1);
+const PER = 60;
+
+let counts: Awaited<ReturnType<typeof getVarietyTypeCounts>> = [];
+let rows: Awaited<ReturnType<typeof getVarietiesForSpecies>> = [];
+try {
+  [counts, rows] = await Promise.all([
+    getVarietyTypeCounts(DB, entity.id),
+    getVarietiesForSpecies(DB, entity.id, { type, limit: PER, offset: (page - 1) * PER }),
+  ]);
+} catch {
+  // variety columns not yet on live D1 — degrade to empty
+}
+const total = counts.filter(c => !type || c.variety_type === type).reduce((s, c) => s + c.n, 0);
+const pages = Math.max(1, Math.ceil(total / PER));
+Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=86400');
+---
+<Layout>
+  <div class="max-w-5xl mx-auto px-6 py-10">
+    <p class="text-xs uppercase tracking-wide text-earth-700 mb-1">
+      <a href={`/entity/${entity.slug}`} class="hover:underline">{entity.scientific_name}</a> · Varieties
+    </p>
+    <h1 class="text-2xl font-semibold text-nature-900 mb-4">Varieties ({total.toLocaleString()})</h1>
+
+    <div class="flex flex-wrap gap-2 mb-4 text-xs">
+      <a href={`/entity/${entity.slug}/varieties`} class={`px-2 py-1 rounded border ${!type ? 'bg-nature-50 border-nature-700/40' : 'border-nature-700/15'}`}>All</a>
+      {counts.map(c => c.variety_type && (
+        <a href={`/entity/${entity.slug}/varieties?type=${c.variety_type}`} class={`px-2 py-1 rounded border ${type === c.variety_type ? 'bg-nature-50 border-nature-700/40' : 'border-nature-700/15'}`}>{c.variety_type} ({c.n.toLocaleString()})</a>
+      ))}
+    </div>
+
+    <ul class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+      {rows.map(v => (
+        <li>
+          <a href={`/entity/${v.slug}`} class="block px-3 py-2 border border-nature-700/15 rounded hover:border-nature-700/40 no-underline">
+            <span class="italic text-nature-900 text-sm">{v.scientific_name}</span>
+            {v.grin_accession && <span class="block text-[10px] text-earth-600">GRIN {v.grin_accession}</span>}
+          </a>
+        </li>
+      ))}
+    </ul>
+
+    {pages > 1 && (
+      <nav class="flex gap-3 mt-6 text-sm">
+        {page > 1 && <a class="text-nature-700 hover:underline" href={`/entity/${entity.slug}/varieties?${type ? `type=${type}&` : ''}page=${page - 1}`}>← Prev</a>}
+        <span class="text-earth-700">Page {page} / {pages}</span>
+        {page < pages && <a class="text-nature-700 hover:underline" href={`/entity/${entity.slug}/varieties?${type ? `type=${type}&` : ''}page=${page + 1}`}>Next →</a>}
+      </nav>
+    )}
+  </div>
+</Layout>

@@ -1,0 +1,650 @@
+---
+import Layout from '../layouts/Layout.astro';
+import AtlasGraphCyto from '../components/AtlasGraphCyto.astro';
+import AtlasDendrogram from '../components/AtlasDendrogram.astro';
+import AtlasChord from '../components/AtlasChord.astro';
+import { getAllGlobiTerms } from '../lib/queries';
+
+// Region data comes from atlas.json at runtime now (scopes + countries +
+// subdivisions structure). GloBI term chips still server-rendered since
+// the list is small and stable.
+const globiTerms = getAllGlobiTerms();
+
+const BIO_CATEGORIES = [
+  { id: 'plantae', label: 'Plantae', color: 'bg-green-50 border-green-300' },
+  { id: 'invertebrate', label: 'Invertebrate', color: 'bg-orange-50 border-orange-300' },
+  { id: 'vertebrate', label: 'Vertebrate', color: 'bg-blue-50 border-blue-300' },
+  { id: 'fungi', label: 'Fungi', color: 'bg-pink-50 border-pink-300' },
+  { id: 'microbe', label: 'Microbe', color: 'bg-purple-50 border-purple-300' },
+];
+
+const AGROECO_BUCKETS = [
+  { id: 'producer', label: 'Producer', hint: 'crops, weeds, wild plants' },
+  { id: 'herbivore', label: 'Herbivore', hint: 'pest insects, mites, vertebrate pests' },
+  { id: 'predator', label: 'Predator', hint: 'beneficial predators, biocontrol agents' },
+  { id: 'parasitoid', label: 'Parasitoid', hint: 'parasitic wasps and flies' },
+  { id: 'pathogen', label: 'Pathogen', hint: 'plant fungal, bacterial, viral diseases' },
+  { id: 'mutualist', label: 'Mutualist', hint: 'pollinators, soil microbes' },
+  { id: 'decomposer', label: 'Decomposer', hint: 'saprotrophs (no data yet)' },
+];
+
+const SUB_ROLES = [
+  'crop', 'weed', 'wild_plant',
+  'pest_insect', 'pest_mite', 'pest_vertebrate',
+  'beneficial_predator', 'biocontrol', 'beneficial_parasitoid',
+  'pollinator', 'soil_microbe',
+  'pathogen_fungal', 'pathogen_bacterial', 'pathogen_viral',
+  'phytopathogen_viral', 'entomopathogen_viral', 'pathogen_nematode',
+];
+---
+<Layout
+  title="Atlas — agroecological interaction browser"
+  description="Browse AEDIN's 4,307+ AI-consensus-verified interaction claims by agroecological function, taxonomic group, GloBI interaction type, and region. Inspired by the Global Biotic Interactions browse page."
+>
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Dataset",
+    "name": "AEDIN interaction atlas",
+    "description": "Browser-side interactive atlas of agroecological claims, filterable by taxonomic category, agroecological bucket, primary role, GloBI interaction type, and region.",
+    "url": "https://aedin.io/atlas",
+    "creator": { "@type": "Organization", "name": "AEDIN contributors" },
+    "isAccessibleForFree": true
+  })} />
+
+  <div class="max-w-[1600px] mx-auto px-4 py-6">
+    <header class="mb-4 pb-4 border-b border-nature-700/15">
+      <p class="text-xs uppercase tracking-wide text-earth-700 mb-1">Browse</p>
+      <h1 class="text-2xl font-semibold text-nature-900 mb-1">Interaction atlas</h1>
+      <p class="text-sm text-earth-700 max-w-3xl">
+        Stack filters across five axes to narrow the interaction network. Inspired by the
+        <a href="https://www.globalbioticinteractions.org/" class="text-nature-700 hover:underline" rel="noopener" target="_blank">Global Biotic Interactions</a> browse page.
+        Force-directed graph, taxonomic dendrogram, and paginated edge list — all driven by the same filter state.
+      </p>
+    </header>
+
+    <!-- Mobile tab bar (hidden at ≥1280px) -->
+    <nav class="xl:hidden flex border-b border-nature-700/15 mb-4 text-sm overflow-x-auto" id="atlas-tabs">
+      <button data-atlas-tab="filters" class="atlas-tab px-3 py-2 border-b-2 border-nature-700 text-nature-900 font-medium whitespace-nowrap">Filters</button>
+      <button data-atlas-tab="graph" class="atlas-tab px-3 py-2 border-b-2 border-transparent text-earth-700 hover:text-nature-700 whitespace-nowrap">Graph</button>
+      <button data-atlas-tab="tree" class="atlas-tab px-3 py-2 border-b-2 border-transparent text-earth-700 hover:text-nature-700 whitespace-nowrap">Tree</button>
+      <button data-atlas-tab="table" class="atlas-tab px-3 py-2 border-b-2 border-transparent text-earth-700 hover:text-nature-700 whitespace-nowrap">Edges</button>
+    </nav>
+
+    <div class="xl:grid xl:grid-cols-[260px_1fr] xl:gap-4">
+      <!-- Left rail: 3 stacked filter axes -->
+      <aside data-atlas-panel="filters" class="atlas-panel space-y-5 text-sm xl:!block">
+        <div>
+          <h2 class="text-xs uppercase tracking-wide text-earth-700 mb-2">Source</h2>
+          <div class="inline-flex w-full text-[11px] border border-nature-700/20 rounded overflow-hidden" role="group" aria-label="Source">
+            <button class="atlas-source flex-1 px-2 py-1 bg-nature-700 text-white font-medium" data-source="literature" aria-pressed="true">Literature</button>
+            <button class="atlas-source flex-1 px-2 py-1 text-nature-700 hover:bg-nature-50" data-source="globi" aria-pressed="false">GloBI</button>
+            <button class="atlas-source flex-1 px-2 py-1 text-nature-700 hover:bg-nature-50" data-source="both" aria-pressed="false">Both</button>
+          </div>
+          <p id="atlas-globi-note" class="hidden text-[10px] text-earth-700 mt-1 leading-snug"></p>
+          <p class="text-[10px] text-earth-700 mt-1 leading-snug">
+            GloBI edges are aggregated &amp; dashed — <span class="italic">not independently verified</span>.
+            Region &amp; interaction-term filters apply to literature only.
+          </p>
+        </div>
+        <div>
+          <h2 class="text-xs uppercase tracking-wide text-earth-700 mb-2">Region</h2>
+          <div class="space-y-2">
+            <select id="region-select" class="w-full bg-white border border-nature-700/30 rounded px-2 py-1 text-xs">
+              <option value="">— any region —</option>
+              <optgroup label="Regions" id="region-scopes"></optgroup>
+              <optgroup label="Countries" id="region-countries"></optgroup>
+            </select>
+            <select id="region-sub" class="w-full bg-white border border-nature-700/30 rounded px-2 py-1 text-xs" hidden>
+              <option value="">— any —</option>
+            </select>
+            <p class="text-[10px] text-earth-700 leading-snug pt-1">
+              Biogeographically distinct localities (Hawaii, Guam, …) are listed as their own countries, not under their political parent.
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="text-xs uppercase tracking-wide text-earth-700 mb-2">GloBI interaction</h2>
+          <div class="flex flex-wrap gap-1.5">
+            {globiTerms.map(t => (
+              <label class="inline-flex items-center gap-1 text-[11px] font-mono bg-white border border-nature-700/15 rounded px-2 py-0.5 cursor-pointer hover:border-nature-700/40">
+                <input type="checkbox" name="globi" value={t.term} class="atlas-filter h-3 w-3" data-axis="globi" />
+                {t.term}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h2 class="text-xs uppercase tracking-wide text-earth-700 mb-2">Interaction category</h2>
+          <ul id="atlas-category-list" class="space-y-0.5 text-xs"></ul>
+          <p class="text-[10px] text-earth-700 mt-1 leading-snug">Applies to literature and GloBI.</p>
+        </div>
+
+        <div>
+          <h2 class="text-xs uppercase tracking-wide text-earth-700 mb-2">Agroeco bucket</h2>
+          <ul class="space-y-1">
+            {AGROECO_BUCKETS.map(b => (
+              <li>
+                <label class="flex items-baseline gap-2 cursor-pointer hover:text-nature-700">
+                  <input type="checkbox" name="agroeco" value={b.id} class="atlas-filter mt-0.5" data-axis="agroeco" />
+                  <span class="text-nature-900 font-medium">{b.label}</span>
+                  <span class="text-[10px] text-earth-700">{b.hint}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <h2 class="text-xs uppercase tracking-wide text-earth-700 mb-2">Bio category</h2>
+          <ul class="space-y-1">
+            {BIO_CATEGORIES.map(c => (
+              <li>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-nature-700">
+                  <input type="checkbox" name="bio" value={c.id} class="atlas-filter" data-axis="bio" />
+                  <span class={`px-1.5 py-0.5 text-[10px] uppercase tracking-wide rounded border ${c.color}`}>{c.label}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <h2 class="text-xs uppercase tracking-wide text-earth-700 mb-2">Primary role (sub-filter)</h2>
+          <ul class="space-y-0.5 text-xs max-h-72 overflow-y-auto">
+            {SUB_ROLES.map(r => (
+              <li>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-nature-700">
+                  <input type="checkbox" name="role" value={r} class="atlas-filter h-3 w-3" data-axis="role" />
+                  <span class="font-mono">{r}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <button id="clear-filters" class="w-full text-xs text-nature-700 hover:underline">Clear all filters</button>
+      </aside>
+
+      <!-- Main: graph + dendrogram + edge table -->
+      <main class="space-y-4">
+        <section data-atlas-panel="graph" class="atlas-panel xl:!block space-y-2">
+          <div class="bg-white border border-nature-700/15 rounded-md h-[420px] xl:h-[480px] overflow-hidden">
+            <AtlasGraphCyto />
+          </div>
+          <div id="atlas-graph-panel" class="bg-white border border-nature-700/15 rounded-md overflow-auto max-h-[320px]"></div>
+          <p id="atlas-stats" class="text-[11px] text-earth-700 font-mono"></p>
+        </section>
+
+        <section data-atlas-panel="tree" class="atlas-panel xl:!block">
+          <p id="atlas-tree-note" class="hidden text-[10px] text-earth-700 mb-1">Tree views show literature only.</p>
+          <div class="flex items-baseline justify-between mb-2">
+            <h2 id="tree-panel-heading" class="text-sm font-semibold text-nature-900">Taxonomic structure</h2>
+            <div class="inline-flex rounded border border-nature-700/30 overflow-hidden text-[11px]" role="tablist" aria-label="Tree projection">
+              <button id="proj-tree" class="proj-toggle px-2 py-0.5 bg-nature-700 text-white font-medium" data-proj="tree" aria-selected="true">Tree</button>
+              <button id="proj-chord" class="proj-toggle px-2 py-0.5 bg-white text-nature-700 hover:bg-nature-50" data-proj="chord" aria-selected="false">Chord</button>
+            </div>
+          </div>
+          <div id="proj-tree-wrap" class="bg-white border border-nature-700/15 rounded-md h-[420px] xl:h-[520px] overflow-hidden">
+            <AtlasDendrogram />
+          </div>
+          <div id="proj-chord-wrap" class="hidden bg-white border border-nature-700/15 rounded-md h-[420px] xl:h-[520px] overflow-hidden">
+            <AtlasChord />
+          </div>
+        </section>
+
+        <section data-atlas-panel="table" class="atlas-panel xl:!block">
+          <h2 class="text-sm font-semibold text-nature-900 mb-2 flex items-baseline gap-2">
+            Edges <span id="edge-count" class="text-xs font-normal text-earth-700">(loading…)</span>
+          </h2>
+          <div class="bg-white border border-nature-700/15 rounded">
+            <table class="w-full text-xs">
+              <thead class="bg-nature-50 text-earth-700 uppercase text-[10px] tracking-wide">
+                <tr>
+                  <th class="text-left px-2 py-1.5 w-1/4">Subject</th>
+                  <th class="text-left px-2 py-1.5 w-1/6 font-mono normal-case tracking-normal">Interaction</th>
+                  <th class="text-left px-2 py-1.5 w-1/4">Object</th>
+                  <th class="text-left px-2 py-1.5 w-1/6">Region</th>
+                  <th class="text-left px-2 py-1.5">Claim</th>
+                </tr>
+              </thead>
+              <tbody id="edge-rows" class="divide-y divide-nature-700/10"></tbody>
+            </table>
+            <div id="edge-pager" class="px-3 py-2 text-[11px] text-earth-700 border-t border-nature-700/10"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <style>
+    /* Mobile (<xl): only one .atlas-panel visible at a time, gated by
+       data-active="true". The xl:!block tailwind override forces all
+       panels visible at ≥1280px regardless of the data attribute. */
+    @media (max-width: 1279px) {
+      [data-atlas-panel] { display: none; }
+      [data-atlas-panel][data-active="true"] { display: block; }
+    }
+  </style>
+
+  <script is:inline>
+    // Tab switcher — only meaningful at <1280px viewport. On desktop the
+    // xl:!block override forces all panels visible so the data-active
+    // attribute has no effect.
+    (() => {
+      const panels = document.querySelectorAll('[data-atlas-panel]');
+      const tabs   = document.querySelectorAll('.atlas-tab');
+      const setActive = (name) => {
+        panels.forEach(p => {
+          p.setAttribute('data-active', p.getAttribute('data-atlas-panel') === name ? 'true' : 'false');
+        });
+        tabs.forEach(t => {
+          const active = t.getAttribute('data-atlas-tab') === name;
+          t.classList.toggle('border-nature-700', active);
+          t.classList.toggle('text-nature-900', active);
+          t.classList.toggle('font-medium', active);
+          t.classList.toggle('border-transparent', !active);
+          t.classList.toggle('text-earth-700', !active);
+        });
+      };
+      tabs.forEach(t => t.addEventListener('click', () => {
+        const name = t.getAttribute('data-atlas-tab');
+        setActive(name);
+        document.dispatchEvent(new CustomEvent('atlas:tab-changed', { detail: { name } }));
+      }));
+      setActive('filters');
+    })();
+  </script>
+
+  <script is:inline>
+    (async () => {
+      const ROWS_PER_PAGE = 100;
+      const stats = document.getElementById('atlas-stats');
+      const tbody = document.getElementById('edge-rows');
+      const edgeCount = document.getElementById('edge-count');
+      const edgePager = document.getElementById('edge-pager');
+      let atlas = null;
+      let highlights = null;
+      let entitiesById = new Map();
+      let currentPage = 0;
+      let lastFiltered = [];
+      let graphReady = false;
+      let dendrogramReady = false;
+      let chordReady = false;
+      let pendingGraphUpdate = null;
+      let pendingDendrogramUpdate = null;
+      let pendingChordUpdate = null;
+      let lastPushedNodes = null;
+      let lastPushedEdges = null;
+      let lastPushedMode = null;
+      let activeProjection = 'tree';
+      let source = 'literature';              // 'literature' | 'globi' | 'both'
+      let globiSlice = null;                  // { edges, nodes, categories, total, cap }
+      let sliceFetched = false;
+      const activeCategories = new Set();
+      let litCategories = [];                 // [{category,n}] derived from atlas.edges
+
+      // GloBI slice edges normalized to the atlas edge shape.
+      const globiEdges = () => (globiSlice ? globiSlice.edges.map(e => ({
+        claim_id: e.id, subject_id: e.subject_id, object_id: e.object_id,
+        globi_term: e.interaction_type_raw || 'interacts with',
+        interaction_category: e.interaction_category, region: '', provenance: 'globi',
+      })) : []);
+
+      const setSourceButtons = () => {
+        document.querySelectorAll('.atlas-source').forEach(b => {
+          const active = b.getAttribute('data-source') === source;
+          b.setAttribute('aria-pressed', active ? 'true' : 'false');
+          b.classList.toggle('bg-nature-700', active);
+          b.classList.toggle('text-white', active);
+          b.classList.toggle('font-medium', active);
+          b.classList.toggle('text-nature-700', !active);
+        });
+      };
+
+      const buildCategoryList = () => {
+        const listEl = document.getElementById('atlas-category-list');
+        const map = new Map();
+        for (const c of litCategories) map.set(c.category, c.n);
+        if (globiSlice) for (const c of globiSlice.categories) map.set(c.category, (map.get(c.category) || 0) + c.n);
+        const cats = [...map.entries()].map(([category, n]) => ({ category, n }))
+          .sort((a, b) => b.n - a.n || a.category.localeCompare(b.category));
+        listEl.innerHTML = cats.map(c => `<li><label class="flex items-center gap-2 cursor-pointer hover:text-nature-700">
+          <input type="checkbox" class="atlas-cat h-3 w-3" data-cat="${escapeHtml(c.category)}" ${activeCategories.has(c.category) ? 'checked' : ''} />
+          <span class="font-mono">${escapeHtml(c.category)}</span> <span class="text-[10px] text-earth-700">${c.n}</span>
+        </label></li>`).join('');
+      };
+
+      const ensureSlice = async () => {
+        if (sliceFetched && globiSlice) return;
+        try {
+          const r = await fetch('/api/atlas-globi.json');
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          globiSlice = await r.json();
+          sliceFetched = true;
+          // Use incident slice-edge COUNT (degree) as the graph claim_count proxy
+          // so GloBI nodes sort on a scale comparable to literature claim_count and
+          // don't crowd literature out of the graph's top-800 truncation in Both mode.
+          const globiDegree = new Map();
+          for (const e of globiSlice.edges) {
+            globiDegree.set(e.subject_id, (globiDegree.get(e.subject_id) || 0) + 1);
+            globiDegree.set(e.object_id, (globiDegree.get(e.object_id) || 0) + 1);
+          }
+          for (const n of globiSlice.nodes) {
+            if (!entitiesById.has(n.id)) entitiesById.set(n.id, {
+              id: n.id, slug: n.slug, scientific_name: n.scientific_name,
+              common_name: n.common_name, bio_category: n.bio_category,
+              primary_role: n.primary_role, taxonomy_path: n.taxonomy_path,
+              agroeco_bucket: null, claim_count: globiDegree.get(n.id) || 1,
+            });
+          }
+          buildCategoryList();
+        } catch (err) {
+          source = 'literature';
+          setSourceButtons();
+          const note = document.getElementById('atlas-globi-note');
+          note.textContent = `GloBI fetch failed: ${err.message}`;
+          note.classList.remove('hidden');
+        }
+      };
+
+      // When the user switches mobile tabs OR projections, the
+      // previously-hidden panel just gained dimensions — re-push the
+      // last data so Sigma/D3 lay out at the correct container size.
+      document.addEventListener('atlas:tab-changed', (ev) => {
+        const name = ev.detail?.name;
+        if (!lastPushedNodes) return;
+        if (name === 'graph') pushToGraph(lastPushedNodes, lastPushedEdges, lastPushedMode);
+        if (name === 'tree') {
+          if (activeProjection === 'tree') pushToDendrogram(lastPushedNodes);
+          else pushToChord(lastPushedNodes, lastPushedEdges);
+        }
+      });
+
+      document.addEventListener('atlas:graph-ready', () => {
+        graphReady = true;
+        if (pendingGraphUpdate) { pendingGraphUpdate(); pendingGraphUpdate = null; }
+      });
+      document.addEventListener('atlas:dendrogram-ready', () => {
+        dendrogramReady = true;
+        if (pendingDendrogramUpdate) { pendingDendrogramUpdate(); pendingDendrogramUpdate = null; }
+      });
+      document.addEventListener('atlas:chord-ready', () => {
+        chordReady = true;
+        if (pendingChordUpdate) { pendingChordUpdate(); pendingChordUpdate = null; }
+      });
+
+      const pushToGraph = (nodes, edges, mode) => {
+        const fn = () => window.atlasGraph?.update(nodes, edges, { mode });
+        if (graphReady) fn(); else pendingGraphUpdate = fn;
+      };
+      const pushToDendrogram = (nodes) => {
+        const fn = () => window.atlasDendrogram?.update(nodes);
+        if (dendrogramReady) fn(); else pendingDendrogramUpdate = fn;
+      };
+      const pushToChord = (nodes, edges) => {
+        const fn = () => window.atlasChord?.update(nodes, edges);
+        if (chordReady) fn(); else pendingChordUpdate = fn;
+      };
+
+      const fetchData = async () => {
+        try {
+          const [atlasR, hlR] = await Promise.all([
+            fetch('/data/atlas.json'),
+            fetch('/data/atlas-highlights.json'),
+          ]);
+          if (!atlasR.ok) throw new Error(`atlas.json HTTP ${atlasR.status}`);
+          if (!hlR.ok) throw new Error(`atlas-highlights.json HTTP ${hlR.status}`);
+          atlas = await atlasR.json();
+          highlights = await hlR.json();
+          entitiesById = new Map(atlas.entities.map(e => [e.id, e]));
+          stats.textContent = `${atlas.entity_count} entities · ${atlas.edge_count} edges · ${atlas.country_count} countries · ${atlas.scope_count} scopes · ${atlas.globi_term_count} interaction types`;
+          const catMap = new Map();
+          for (const e of atlas.edges) { const k = e.interaction_category || 'uncategorized'; catMap.set(k, (catMap.get(k) || 0) + 1); }
+          litCategories = [...catMap.entries()].map(([category, n]) => ({ category, n }));
+          buildCategoryList();
+          populateRegionSelects();
+          applyFilters();
+        } catch (err) {
+          stats.textContent = `Failed to load atlas data: ${err.message}`;
+        }
+      };
+
+      const getActive = (axis) => {
+        return Array.from(document.querySelectorAll(`.atlas-filter[data-axis="${axis}"]:checked`)).map(el => el.value);
+      };
+
+      const escapeHtml = (s) => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+      const populateRegionSelects = () => {
+        const scopeGroup = document.getElementById('region-scopes');
+        const countryGroup = document.getElementById('region-countries');
+        const scopes = atlas.scopes || [];
+        const countries = (atlas.countries || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+        scopeGroup.innerHTML = scopes.map(s =>
+          `<option value="${escapeHtml(s.name)}" data-kind="scope">${escapeHtml(s.name)} (${s.claim_count})</option>`).join('');
+        countryGroup.innerHTML = countries.map(c =>
+          `<option value="${escapeHtml(c.name)}" data-kind="country">${escapeHtml(c.name)} (${c.claim_count})</option>`).join('');
+      };
+
+      const refreshSubdivisions = () => {
+        const regionSel = document.getElementById('region-select');
+        const subSel = document.getElementById('region-sub');
+        const opt = regionSel.selectedOptions[0];
+        const isCountry = opt && opt.getAttribute('data-kind') === 'country';
+        const countries = (atlas.countries || []);
+        const c = isCountry ? countries.find(x => x.name === regionSel.value) : null;
+        if (!c || !(c.subdivisions || []).length) {
+          subSel.hidden = true;
+          subSel.innerHTML = '<option value="">— any —</option>';
+          return;
+        }
+        subSel.hidden = false;
+        subSel.innerHTML = '<option value="">— any —</option>'
+          + c.subdivisions.map(s => `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)} (${s.claim_count})</option>`).join('');
+      };
+
+      const getRegionFilter = () => {
+        const regionSel = document.getElementById('region-select');
+        const opt = regionSel.selectedOptions[0];
+        const kind = opt ? opt.getAttribute('data-kind') : null;
+        const val = regionSel.value || null;
+        return {
+          scope: kind === 'scope' ? val : null,
+          country: kind === 'country' ? val : null,
+          subdivision: kind === 'country' ? (document.getElementById('region-sub').value || null) : null,
+        };
+      };
+
+      const isAnyFilterActive = () => {
+        if (document.getElementById('region-select').value) return true;
+        if (document.getElementById('region-sub').value) return true;
+        return document.querySelector('.atlas-filter:checked') !== null;
+      };
+
+      const applyFilters = () => {
+        if (!atlas) return;
+        const { scope, country, subdivision } = getRegionFilter();
+        const bios = new Set(getActive('bio'));
+        const buckets = new Set(getActive('agroeco'));
+        const roles = new Set(getActive('role'));
+        const globis = new Set(getActive('globi'));
+        const cats = activeCategories;
+
+        const entityMatches = (id) => {
+          const e = entitiesById.get(id);
+          if (!e) return false;
+          if (bios.size && !bios.has(e.bio_category)) return false;
+          if (buckets.size && !buckets.has(e.agroeco_bucket)) return false;   // GloBI nodes (null bucket) self-exclude
+          if (roles.size && !roles.has(e.primary_role)) return false;
+          return true;
+        };
+        const catMatch = (e) => !cats.size || cats.has(e.interaction_category || 'uncategorized');
+
+        // Literature edges: all five existing axes + the new category axis.
+        const litPool = (source === 'literature' || source === 'both') ? atlas.edges : [];
+        const filteredLit = litPool.filter(e => {
+          if (scope && !(e.scopes && e.scopes.includes(scope))) return false;
+          if (country && e.country !== country) return false;
+          if (subdivision && e.subdivision !== subdivision) return false;
+          if (globis.size && !globis.has(e.globi_term)) return false;
+          if (!catMatch(e)) return false;
+          if (!entityMatches(e.subject_id)) return false;
+          if (!entityMatches(e.object_id)) return false;
+          return true;
+        });
+
+        // GloBI edges: excluded entirely when a literature-only axis (region or
+        // interaction-term) is active; otherwise filtered by category + node axes.
+        const litOnlyAxisActive = !!(scope || country || subdivision || globis.size);
+        const globiPool = ((source === 'globi' || source === 'both') && !litOnlyAxisActive) ? globiEdges() : [];
+        const filteredGlobi = globiPool.filter(e => {
+          if (!catMatch(e)) return false;
+          if (!entityMatches(e.subject_id)) return false;
+          if (!entityMatches(e.object_id)) return false;
+          return true;
+        });
+
+        const filtered = [...filteredLit, ...filteredGlobi];
+        lastFiltered = filtered;
+        currentPage = 0;
+        edgeCount.textContent = `(${filtered.length.toLocaleString()})`;
+        renderPage();
+
+        // Graph + table use the merged set; the taxonomic tree views use
+        // literature only (GloBI nodes have no agroeco_bucket).
+        let nodes, edges, mode;
+        const seedable = !isAnyFilterActive() && cats.size === 0 && source === 'literature';
+        if (seedable && highlights) {
+          nodes = highlights.entities;
+          edges = highlights.edges;
+          mode = 'highlights';
+        } else {
+          const nodeIds = new Set();
+          for (const e of filtered) { nodeIds.add(e.subject_id); nodeIds.add(e.object_id); }
+          nodes = [...nodeIds].map(id => entitiesById.get(id)).filter(Boolean);
+          edges = filtered;
+          mode = 'filtered';
+        }
+        lastPushedNodes = nodes;
+        lastPushedEdges = edges;
+        lastPushedMode = mode;
+        pushToGraph(nodes, edges, mode);
+
+        // Tree projections: literature-only subset.
+        const litTreeEdges = (mode === 'highlights') ? edges : filtered.filter(e => e.provenance !== 'globi');
+        let litTreeNodes;
+        if (mode === 'highlights') {
+          litTreeNodes = nodes;
+        } else {
+          const s = new Set();
+          for (const e of litTreeEdges) { s.add(e.subject_id); s.add(e.object_id); }
+          litTreeNodes = [...s].map(id => entitiesById.get(id)).filter(Boolean);
+        }
+        if (activeProjection === 'tree') pushToDendrogram(litTreeNodes);
+        else pushToChord(litTreeNodes, litTreeEdges);
+        document.getElementById('atlas-tree-note').classList.toggle('hidden', source === 'literature');
+      };
+
+      const renderPage = () => {
+        const start = currentPage * ROWS_PER_PAGE;
+        const slice = lastFiltered.slice(start, start + ROWS_PER_PAGE);
+        if (slice.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="px-2 py-6 text-center text-earth-700">No edges match the current filters.</td></tr>';
+          edgePager.textContent = '';
+          return;
+        }
+        tbody.innerHTML = slice.map(e => {
+          const s = entitiesById.get(e.subject_id) || {};
+          const o = entitiesById.get(e.object_id) || {};
+          const isGlobi = e.provenance === 'globi';
+          const interactionCell = isGlobi
+            ? `<span class="font-mono text-[11px] text-earth-700">${escapeHtml(e.globi_term)}</span> <span class="text-[9px] uppercase tracking-wide text-amber-700 border border-amber-300 rounded px-1 ml-1">GloBI</span>`
+            : `<span class="font-mono text-[11px] text-nature-900">${escapeHtml(e.globi_term)}</span>`;
+          const claimCell = isGlobi
+            ? `<a href="/entity/${o.slug || ''}" class="text-earth-700 hover:underline">via GloBI →</a>`
+            : `<a href="/claim/${e.claim_id}" class="text-nature-700 hover:underline">#${e.claim_id}</a>`;
+          return `<tr class="hover:bg-nature-50">
+            <td class="px-2 py-1"><a href="/entity/${s.slug || ''}" class="italic text-nature-700 hover:underline">${escapeHtml(s.scientific_name || '?')}</a></td>
+            <td class="px-2 py-1">${interactionCell}</td>
+            <td class="px-2 py-1"><a href="/entity/${o.slug || ''}" class="italic text-nature-700 hover:underline">${escapeHtml(o.scientific_name || '?')}</a></td>
+            <td class="px-2 py-1 text-earth-700">${escapeHtml(e.region || '')}</td>
+            <td class="px-2 py-1">${claimCell}</td>
+          </tr>`;
+        }).join('');
+        const totalPages = Math.ceil(lastFiltered.length / ROWS_PER_PAGE);
+        edgePager.innerHTML = `Page ${currentPage + 1} of ${totalPages} ·
+          <button id="prev-pg" class="text-nature-700 hover:underline" ${currentPage === 0 ? 'disabled' : ''}>prev</button> ·
+          <button id="next-pg" class="text-nature-700 hover:underline" ${currentPage + 1 >= totalPages ? 'disabled' : ''}>next</button>`;
+        document.getElementById('prev-pg')?.addEventListener('click', () => { if (currentPage > 0) { currentPage--; renderPage(); } });
+        document.getElementById('next-pg')?.addEventListener('click', () => { if ((currentPage + 1) * ROWS_PER_PAGE < lastFiltered.length) { currentPage++; renderPage(); } });
+      };
+
+      // Tree ↔ Chord projection toggle inside the tree panel header.
+      const treePanelHeading = document.getElementById('tree-panel-heading');
+      const treeWrap  = document.getElementById('proj-tree-wrap');
+      const chordWrap = document.getElementById('proj-chord-wrap');
+      document.querySelectorAll('.proj-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const proj = btn.getAttribute('data-proj');
+          if (proj === activeProjection) return;
+          activeProjection = proj;
+          document.querySelectorAll('.proj-toggle').forEach(b => {
+            const active = b.getAttribute('data-proj') === proj;
+            b.setAttribute('aria-selected', active ? 'true' : 'false');
+            b.classList.toggle('bg-nature-700', active);
+            b.classList.toggle('text-white', active);
+            b.classList.toggle('font-medium', active);
+            b.classList.toggle('bg-white', !active);
+            b.classList.toggle('text-nature-700', !active);
+            b.classList.toggle('hover:bg-nature-50', !active);
+          });
+          treePanelHeading.textContent = proj === 'tree' ? 'Taxonomic structure' : 'Bucket-to-bucket interactions';
+          treeWrap.classList.toggle('hidden', proj !== 'tree');
+          chordWrap.classList.toggle('hidden', proj !== 'chord');
+          // The newly-visible panel just gained dimensions — re-push.
+          if (!lastPushedNodes) return;
+          if (proj === 'tree') pushToDendrogram(lastPushedNodes);
+          else pushToChord(lastPushedNodes, lastPushedEdges);
+        });
+      });
+
+      document.querySelectorAll('.atlas-filter').forEach(el => el.addEventListener('change', applyFilters));
+      document.getElementById('region-select').addEventListener('change', () => { refreshSubdivisions(); applyFilters(); });
+      document.getElementById('region-sub').addEventListener('change', applyFilters);
+      document.getElementById('clear-filters').addEventListener('click', () => {
+        document.querySelectorAll('.atlas-filter').forEach(el => { el.checked = false; });
+        document.getElementById('region-select').value = '';
+        refreshSubdivisions();
+        activeCategories.clear();
+        buildCategoryList();
+        applyFilters();
+      });
+
+      // Source toggle: lazy-fetch the GloBI slice on first GloBI/Both selection.
+      document.querySelectorAll('.atlas-source').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const next = btn.getAttribute('data-source');
+          if (next === source) return;
+          source = next;
+          setSourceButtons();
+          document.getElementById('atlas-globi-note').classList.add('hidden');
+          if (source !== 'literature') await ensureSlice();
+          applyFilters();
+        });
+      });
+
+      // Interaction-category filter (delegated; checkboxes rebuilt only on load/fetch).
+      document.getElementById('atlas-category-list').addEventListener('change', (ev) => {
+        const cb = ev.target.closest('.atlas-cat');
+        if (!cb) return;
+        const cat = cb.getAttribute('data-cat');
+        if (cb.checked) activeCategories.add(cat); else activeCategories.delete(cat);
+        applyFilters();
+      });
+
+      fetchData();
+    })();
+  </script>
+</Layout>

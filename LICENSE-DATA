@@ -1,0 +1,55 @@
+AEDIN — Data License (Creative Commons Attribution 4.0 International)
+
+The structured data produced by the AEDIN project — including claim
+records, entity records, source records, multi-critic verdict records,
+aggregate statistics, and the relationships linking them — is licensed
+under the Creative Commons Attribution 4.0 International License (CC BY 4.0).
+
+You are free to:
+
+  Share — copy and redistribute the material in any medium or format.
+  Adapt — remix, transform, and build upon the material for any purpose,
+          including commercially.
+
+Under the following terms:
+
+  Attribution — You must give appropriate credit to AEDIN, provide a
+  link to this license, and indicate if changes were made. You may do so
+  in any reasonable manner, but not in any way that suggests AEDIN
+  endorses you or your use.
+
+  No additional restrictions — You may not apply legal terms or
+  technological measures that legally restrict others from doing anything
+  the license permits.
+
+Recommended citation:
+
+  AEDIN Project (2026). AEDIN: An open agroecological knowledge base
+  with multi-critic AI consensus verification.
+  https://aedin.io · https://github.com/aedin-io/aedin
+  Persistent identifier: see CITATION.cff in the repository root.
+
+Full license text:
+
+  Human-readable summary: https://creativecommons.org/licenses/by/4.0/
+  Legal code:             https://creativecommons.org/licenses/by/4.0/legalcode
+
+---
+
+Scope notes:
+
+This data license applies only to AEDIN's own metadata, entity records,
+multi-critic verdict records, and aggregate analysis layered on top of
+source material. It does NOT extend the license of the underlying source
+publications from which claims were extracted.
+
+Verbatim source quotes displayed on individual claim pages retain the
+license of the original source publication. Each quote displays its
+source license badge (CC-BY, CC-BY-SA, CC0, USDA-PD, etc.) alongside it.
+If you wish to reuse a quote beyond what its source license permits, you
+must obtain permission from the original rights-holder; that is not a
+permission AEDIN can grant.
+
+The software powering this project (the extraction pipeline, the public
+web site, the administrative tooling) is licensed separately under the
+MIT License. See LICENSE.

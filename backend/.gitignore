@@ -1,0 +1,4 @@
+
+# Sim-trait source caches (regenerable via fetch-*-*.js)
+usda-cache/
+trefle-sim-cache/

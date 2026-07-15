@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="AEDIN">
+  <title>AEDIN — on dark</title>
+  
+  <g fill="none" stroke="#f4faf3" stroke-linecap="round">
+    <line x1="60" y1="22" x2="26" y2="98" stroke-width="4.2" stroke-opacity="0.5"></line>
+    <line x1="60" y1="22" x2="94" y2="98" stroke-width="4.2" stroke-opacity="0.5"></line>
+    <line x1="41.6" y1="63" x2="78.4" y2="63" stroke-width="4.2" stroke-opacity="0.68"></line>
+  </g>
+  <g stroke-width="2.2">
+    <circle cx="26" cy="98" r="8" fill="#EF4444" stroke="#173d1a"></circle>
+    <circle cx="94" cy="98" r="8" fill="#22C55E" stroke="#173d1a"></circle>
+    <circle cx="41.6" cy="63" r="7" fill="#3B82F6" stroke="#173d1a"></circle>
+    <circle cx="78.4" cy="63" r="7" fill="#EC4899" stroke="#173d1a"></circle>
+    <circle cx="60" cy="22" r="9" fill="#173d1a" stroke="#f4faf3"></circle>
+  </g>
+</svg>

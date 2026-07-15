@@ -1,0 +1,225 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Search from '../components/Search.astro';
+import { getLandingStatsD1, getAllRegionsD1, getAllGlobiTermsD1 } from '../lib/queries-d1';
+import { negotiateMarkdown, homepageMarkdown } from '../lib/agent-markdown';
+
+// SSR from live D1 so post-deploy ingest updates (Pass 12+) surface immediately
+// without a site rebuild. The build-time queries.ts versions still serve the
+// prerendered region/source/claim/entity-discovery pages.
+export const prerender = false;
+
+const DB = Astro.locals.runtime.env.DB;
+// allSettled so a missing-column on regions/interactions (e.g., the D1 claims
+// table doesn't yet have regional_context) doesn't blank the page — the stats
+// block is the load-bearing element here.
+const [statsR, regionsR, interactionsR] = await Promise.allSettled([
+  getLandingStatsD1(DB),
+  getAllRegionsD1(DB),
+  getAllGlobiTermsD1(DB),
+]);
+const stats = statsR.status === 'fulfilled' ? statsR.value
+  : { total_servable_claims: 0, total_entities_with_claims: 0, total_sources: 0, total_globi_interactions: 0, sample_entities: [], top_sources: [] };
+const regions = regionsR.status === 'fulfilled' ? regionsR.value.slice(0, 12) : [];
+const interactions = interactionsR.status === 'fulfilled' ? interactionsR.value : [];
+
+// Markdown for Agents: agents sending `Accept: text/markdown` get a markdown
+// overview built from the same data; browsers fall through to the HTML below.
+// (Shared helper in lib/agent-markdown.ts — also powers /entity/<slug>.)
+const agentMd = negotiateMarkdown(Astro.request, () => homepageMarkdown(stats, regions, interactions));
+if (agentMd) return agentMd;
+---
+
+<Layout>
+  <div class="max-w-5xl mx-auto px-6 py-10 sm:py-14">
+
+    <!-- 1. WHAT IT IS -->
+    <header class="mb-10">
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">
+        <h1 class="text-3xl sm:text-4xl font-semibold text-nature-900 tracking-tight">
+          AEDIN
+        </h1>
+        <p class="text-sm sm:text-base text-earth-700">
+          <span class="font-semibold text-nature-700">A</span>gro<span class="font-semibold text-nature-700">E</span>cological <span class="font-semibold text-nature-700">D</span>atabase of <span class="font-semibold text-nature-700">In</span>teractions
+        </p>
+      </div>
+      <p class="text-base sm:text-lg text-nature-900 max-w-3xl leading-relaxed">
+        A map of how organisms in agricultural environments affect each other — from crops to the predators that eat the pests.
+      </p>
+    </header>
+
+    <!-- 2. HOW TO NAVIGATE: search + two primary entry points -->
+    <section class="mb-12">
+      <Search />
+
+      <div class="grid sm:grid-cols-2 gap-3 mt-4">
+        <a href="/atlas" class="nav-card">
+          <div class="nav-card__title">Atlas</div>
+          <div class="nav-card__desc">Network graph of every entity and its ecological interactions.</div>
+        </a>
+        <a href="/crop-web" class="nav-card">
+          <div class="nav-card__title">Crop web</div>
+          <div class="nav-card__desc">Four-level radial view of interactions radiating from a single crop.</div>
+        </a>
+      </div>
+    </section>
+
+    <!-- 3. HIGHLIGHTS: stats + top entities + top sources -->
+    <section class="mb-10">
+      <h2 class="section-eyebrow">Holdings</h2>
+      <p class="text-base text-nature-900">
+        <strong class="tabular-nums">{(stats.total_servable_claims + stats.total_globi_interactions).toLocaleString()}</strong>
+        interactions ·
+        <strong class="tabular-nums">{stats.total_entities_with_claims.toLocaleString()}</strong>
+        entities
+      </p>
+    </section>
+
+    <section class="grid md:grid-cols-2 gap-x-8 gap-y-8 mb-12">
+      <div>
+        <h2 class="section-eyebrow">Entities with the most evidence</h2>
+        <ul class="link-list">
+          {stats.sample_entities.slice(0, 6).map((e) => (
+            <li>
+              <a href={`/entity/${e.slug}`}>
+                <span class="link-list__primary"><em>{e.scientific_name}</em>{e.common_name && <span class="text-earth-700 not-italic"> · {e.common_name}</span>}</span>
+                <span class="link-list__count">{e.claim_count.toLocaleString()}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <h2 class="section-eyebrow">Most-cited sources</h2>
+        <ul class="link-list">
+          {stats.top_sources.slice(0, 6).map((s) => (
+            <li>
+              <a href={`/source/${s.slug}`}>
+                <span class="link-list__primary">
+                  {s.title}
+                  <span class="block text-xs text-earth-700 mt-0.5">
+                    {s.authors && <span>{s.authors.split(/[,;&]/)[0].trim()}</span>}
+                    {s.year && <span> · {s.year}</span>}
+                  </span>
+                </span>
+                <span class="link-list__count">{s.claim_count.toLocaleString()}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+
+    {(regions.length > 0 || interactions.length > 0) && (
+      <!-- INDEX: browse-all entry points (small footer-style nav). Each side
+           renders only when its data is available — D1 schema may not yet
+           include every facet (e.g. regional_context). -->
+      <section class="grid md:grid-cols-2 gap-x-8 gap-y-6 pt-6 border-t border-nature-700/15">
+        {regions.length > 0 && (
+          <div>
+            <h3 class="section-eyebrow">Browse by region</h3>
+            <ul class="inline-list">
+              {regions.map((r) => (
+                <li><a href={`/region/${r.slug}`}>{r.region} <span class="text-earth-700">({r.claim_count.toLocaleString()})</span></a></li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {interactions.length > 0 && (
+          <div>
+            <h3 class="section-eyebrow">Browse by interaction</h3>
+            <ul class="inline-list inline-list--mono">
+              {interactions.map((i) => (
+                <li><a href={`/interaction/${i.term}`}>{i.term} <span class="text-earth-700 font-sans">({i.claim_count.toLocaleString()})</span></a></li>
+              ))}
+            </ul>
+            <p class="text-xs text-earth-700 mt-3">
+              Vocabulary follows the
+              <a href="https://www.globalbioticinteractions.org/" target="_blank" rel="noopener" class="text-nature-700 hover:underline">GloBI Relations Ontology</a>.
+            </p>
+          </div>
+        )}
+      </section>
+    )}
+
+  </div>
+
+  <style>
+    /* Two navigation cards — primary entry points */
+    .nav-card {
+      display: block;
+      padding: 1rem 1.1rem;
+      background: white;
+      border: 1px solid rgba(47, 106, 49, 0.2);
+      border-radius: 6px;
+      text-decoration: none;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .nav-card:hover {
+      border-color: rgba(47, 106, 49, 0.55);
+      background: #fbfefa;
+    }
+    .nav-card__title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--color-nature-900, #173d1a);
+      margin-bottom: 0.2rem;
+    }
+    .nav-card__desc {
+      font-size: 0.88rem;
+      color: var(--color-earth-700, #6b4f2a);
+      line-height: 1.4;
+    }
+
+    /* Small uppercase section labels */
+    .section-eyebrow {
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--color-earth-700, #6b4f2a);
+      margin: 0 0 0.7rem;
+      font-weight: 500;
+    }
+
+    /* Stacked link list (entities + sources) */
+    .link-list { list-style: none; padding: 0; margin: 0; }
+    .link-list li + li { border-top: 1px solid rgba(47, 106, 49, 0.12); }
+    .link-list a {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 0.8rem;
+      padding: 0.55rem 0;
+      text-decoration: none;
+      color: var(--color-nature-900, #173d1a);
+      transition: color 0.15s ease;
+    }
+    .link-list a:hover { color: var(--color-nature-700, #2f6a31); }
+    .link-list a:hover .link-list__primary { text-decoration: underline; text-underline-offset: 3px; }
+    .link-list__primary { font-size: 0.95rem; line-height: 1.35; flex: 1 1 auto; min-width: 0; }
+    .link-list__count {
+      font-size: 0.78rem;
+      color: var(--color-nature-700, #2f6a31);
+      font-variant-numeric: tabular-nums;
+      flex: 0 0 auto;
+    }
+
+    /* Comma-separated wrapping inline list (regions + interactions) */
+    .inline-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      font-size: 0.88rem;
+      line-height: 1.7;
+    }
+    .inline-list li { display: inline; }
+    .inline-list li:not(:last-child)::after { content: " · "; color: var(--color-earth-700, #6b4f2a); }
+    .inline-list a {
+      color: var(--color-nature-900, #173d1a);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .inline-list a:hover { color: var(--color-nature-700, #2f6a31); text-decoration: underline; text-underline-offset: 3px; }
+    .inline-list--mono a { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 0.82rem; }
+  </style>
+</Layout>

@@ -1,0 +1,172 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getSourceBySlug, getAllSourceSlugsWithServableClaims, type Claim } from '../../lib/queries';
+import CiteThis from '../../components/CiteThis.astro';
+
+export async function getStaticPaths() {
+  const slugs = getAllSourceSlugsWithServableClaims();
+  return slugs.map(slug => ({ params: { slug } }));
+}
+
+const { slug } = Astro.params;
+const result = getSourceBySlug(slug!);
+
+if (!result) {
+  return new Response(null, { status: 404 });
+}
+
+const { source, claims } = result;
+
+// Group claims by interaction_category (same shape as entity page).
+const claimsByCategory = new Map<string, Claim[]>();
+for (const c of claims) {
+  const k = c.interaction_category || 'uncategorized';
+  if (!claimsByCategory.has(k)) claimsByCategory.set(k, []);
+  claimsByCategory.get(k)!.push(c);
+}
+const categories = Array.from(claimsByCategory.keys()).sort();
+
+const titleSuffix = source.year ? `${source.title} (${source.year})` : source.title ?? 'Untitled source';
+---
+
+<Layout
+  title={titleSuffix}
+  description={`${source.title}${source.authors ? ` by ${source.authors}` : ''}${source.year ? ` (${source.year})` : ''} — ${claims.length} AI-consensus-verified ${claims.length === 1 ? 'claim' : 'claims'} extracted from this source, with verbatim quotes and page citations.`}
+>
+  <article
+    class="max-w-5xl mx-auto px-6 py-10"
+    data-pagefind-body
+    data-pagefind-meta="kind:source"
+    data-pagefind-filter="Kind:source"
+  >
+    <header class="mb-8 pb-6 border-b border-nature-700/15">
+      <p class="text-xs uppercase tracking-wide text-earth-700 mb-1">Source</p>
+      <h1 class="text-2xl font-semibold text-nature-900 mb-2">{source.title ?? 'Untitled'}</h1>
+      {source.authors && <p class="text-sm text-earth-700">{source.authors}</p>}
+      <dl class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm">
+        {source.year && (
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-earth-700">Year</dt>
+            <dd class="text-sm text-nature-900">{source.year}</dd>
+          </div>
+        )}
+        {source.publication && (
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-earth-700">Publication</dt>
+            <dd class="text-sm text-nature-900">{source.publication}</dd>
+          </div>
+        )}
+        {source.source_type && (
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-earth-700">Type</dt>
+            <dd class="text-sm text-nature-900">{source.source_type.replace(/_/g, ' ')}</dd>
+          </div>
+        )}
+        {source.license && (
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-earth-700">License</dt>
+            <dd class="text-sm text-nature-900">{source.license}</dd>
+          </div>
+        )}
+      </dl>
+      {(source.url || source.doi) && (
+        <p class="mt-4 text-sm">
+          {source.doi && (
+            <a href={`https://doi.org/${source.doi}`} class="text-nature-700 hover:underline mr-4" rel="noopener" target="_blank">
+              doi:{source.doi}&nbsp;↗
+            </a>
+          )}
+          {source.url && !source.doi && (
+            <a href={source.url} class="text-nature-700 hover:underline" rel="noopener" target="_blank">
+              Read source&nbsp;↗
+            </a>
+          )}
+        </p>
+      )}
+      <div class="mt-5 max-w-md">
+        <CiteThis
+          kind="source"
+          id={source.slug}
+          title={source.title ?? 'Untitled source'}
+          authors={source.authors}
+          year={source.year}
+          publication={source.publication}
+          url={`https://aedin.io/source/${source.slug}`}
+        />
+      </div>
+    </header>
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "ScholarlyArticle",
+      "name": source.title,
+      "headline": source.title,
+      "author": source.authors,
+      "datePublished": source.year ? String(source.year) : undefined,
+      "isPartOf": source.publication ? { "@type": "Periodical", "name": source.publication } : undefined,
+      "url": `https://aedin.io/source/${source.slug}`,
+      "identifier": source.doi ? `doi:${source.doi}` : undefined,
+      "license": source.license || undefined
+    })} />
+
+    <p class="text-sm text-earth-700 mb-8">
+      <strong class="text-nature-900">{claims.length}</strong> AI-consensus-verified
+      {claims.length === 1 ? ' claim' : ' claims'} extracted from this source
+      {categories.length > 0 && (<>, across {categories.length} interaction {categories.length === 1 ? 'category' : 'categories'}</>)}.
+    </p>
+
+    {categories.map(cat => (
+      <section class="mb-10">
+        <h2 class="text-xl font-semibold text-nature-900 mb-3 capitalize">{cat.replace(/_/g, ' ')}</h2>
+        <ul class="space-y-3">
+          {claimsByCategory.get(cat)!.map((c: Claim) => (
+            <li class="bg-white border border-nature-700/15 rounded p-4">
+              <div class="text-xs text-earth-700 mb-2">
+                {c.subject_slug ? (
+                  <a href={`/entity/${c.subject_slug}`} class="italic text-nature-700 hover:underline">{c.subject_scientific_name}</a>
+                ) : (
+                  <span class="italic">{c.subject_scientific_name}</span>
+                )}
+                {c.interaction_type_raw && (<> <em>{c.interaction_type_raw.replace(/_/g, ' ')}</em></>)}
+                {c.object_scientific_name && (
+                  <>
+                    {' '}
+                    {c.object_slug ? (
+                      <a href={`/entity/${c.object_slug}`} class="italic text-nature-700 hover:underline">{c.object_scientific_name}</a>
+                    ) : (
+                      <span class="italic">{c.object_scientific_name}</span>
+                    )}
+                  </>
+                )}
+                {c.effect_direction && (<> · effect: {c.effect_direction}</>)}
+              </div>
+              <blockquote class="text-sm text-nature-900 border-l-2 border-nature-700/40 pl-3 italic mb-2">
+                &ldquo;{c.source_quote}&rdquo;
+              </blockquote>
+              {(c.interaction_type_globi || c.critic_verdicts) && (
+                <div class="text-xs flex flex-wrap items-center gap-2 mb-2">
+                  {c.interaction_type_globi && (
+                    <span class="px-2 py-0.5 bg-nature-50 border border-nature-700/30 rounded font-mono text-nature-900" title="GloBI Relations Ontology term">{c.interaction_type_globi}</span>
+                  )}
+                  {c.critic_verdicts && (() => {
+                    const lines = c.critic_verdicts.split('\n').filter(Boolean);
+                    const plausible = lines.filter(l => l.split('|')[1] === 'plausible').length;
+                    const total = lines.length;
+                    return (
+                      <span class="text-earth-700" title={`Critics: ${lines.map(l => l.replace('|', ' → ')).join(' / ')}`}>
+                        ✓ {plausible}/{total} AI critics agreed
+                      </span>
+                    );
+                  })()}
+                </div>
+              )}
+              <p class="text-xs text-earth-700">
+                {c.source_page && <span>p.&nbsp;{c.source_page}</span>}
+                <a href={`/claim/${c.id}`} class="ml-2 text-nature-700 hover:underline opacity-60 hover:opacity-100">#{c.id}</a>
+              </p>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))}
+  </article>
+</Layout>

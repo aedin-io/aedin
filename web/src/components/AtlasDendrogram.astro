@@ -1,0 +1,258 @@
+---
+/**
+ * AtlasDendrogram — radial taxonomic dendrogram of currently-visible
+ * entities, rendered as a D3 cluster layout over an SVG.
+ *
+ * Receives the same node subset that the graph receives:
+ *
+ *   window.atlasDendrogram.update(nodes, { mode })
+ *
+ * Builds a tree from entity.taxonomy_path (slash-separated kingdom →
+ * species). Leaves are the entities; internal nodes are shared
+ * taxonomic ancestors. Leaf color = bio_category (same TAXA_COLORS
+ * palette as the graph, so the two views are visually consistent).
+ *
+ * Hover coordination:
+ *   - Hover dendrogram leaf → dispatch `atlas:taxon-hover` with entity id;
+ *     the graph listens and highlights the matching node.
+ *   - Listen for `atlas:graph-hover` (dispatched by the graph) and
+ *     highlight the matching leaf.
+ *
+ * Cap: 200 leaves max — past that, radial label spacing breaks down.
+ * Sorted by claim_count desc so the most-cited subset survives.
+ */
+---
+<div id="atlas-dendrogram-container" class="relative h-full">
+  <svg id="atlas-dendrogram-svg" class="block w-full h-full"></svg>
+  <div class="absolute top-2 left-2 bg-white/80 backdrop-blur-sm border border-nature-700/15 rounded px-2 py-1 text-[11px] text-earth-700 pointer-events-none">
+    <span id="atlas-dendrogram-status">Loading taxonomy…</span>
+  </div>
+  <div id="atlas-dendrogram-truncated" class="hidden absolute top-2 right-2 bg-amber-50 border border-amber-300 rounded px-2 py-1 text-[11px] text-amber-900 pointer-events-none"></div>
+</div>
+
+<script>
+import { hierarchy, cluster } from 'd3-hierarchy';
+import { select } from 'd3-selection';
+import { linkRadial } from 'd3-shape';
+
+const TAXA_COLORS: Record<string, string> = {
+  plantae:     '#73AC13',
+  invertebrate:'#FF4500',
+  vertebrate:  '#1E90FF',
+  fungi:       '#F52887',
+  microbe:     '#A855F7',
+  other:       '#94A3B8',
+};
+
+interface Entity {
+  id: number;
+  slug: string;
+  scientific_name: string;
+  common_name: string | null;
+  family: string | null;
+  bio_category: string | null;
+  agroeco_bucket: string | null;
+  primary_role: string | null;
+  taxonomy_path: string | null;
+  claim_count: number;
+}
+
+interface TreeNode {
+  name: string;
+  entity?: Entity;
+  children?: TreeNode[];
+}
+
+const MAX_LEAVES = 200;
+const svgEl = document.getElementById('atlas-dendrogram-svg') as unknown as SVGSVGElement;
+const status = document.getElementById('atlas-dendrogram-status') as HTMLElement;
+const truncated = document.getElementById('atlas-dendrogram-truncated') as HTMLElement;
+
+function buildHierarchy(entities: Entity[]): TreeNode {
+  // Truncate the path to drop the genus and species (last two levels)
+  // and use scientific_name as the leaf. This collapses sibling species
+  // under a common Genus internal node, which reads better than letting
+  // species be both an internal and a leaf name.
+  const root: TreeNode = { name: 'Life', children: [] };
+  const lookup = new Map<string, TreeNode>();
+  lookup.set('', root);
+
+  for (const ent of entities) {
+    const rawPath = ent.taxonomy_path || '';
+    const parts = rawPath.split('/').map(s => s.trim()).filter(Boolean);
+    // Drop the final segment if it duplicates scientific_name (it usually does)
+    if (parts.length && parts[parts.length - 1] === ent.scientific_name) parts.pop();
+
+    let parentKey = '';
+    let parent = root;
+    for (const seg of parts) {
+      const key = parentKey ? `${parentKey}/${seg}` : seg;
+      let node = lookup.get(key);
+      if (!node) {
+        node = { name: seg, children: [] };
+        parent.children!.push(node);
+        lookup.set(key, node);
+      }
+      parent = node;
+      parentKey = key;
+    }
+    parent.children!.push({ name: ent.scientific_name, entity: ent });
+  }
+  return root;
+}
+
+let highlightedLeaf: string | null = null;
+
+function render(entities: Entity[]) {
+  if (!svgEl) return;
+  let displayEntities = entities.filter(e => e.taxonomy_path);
+  let truncatedCount = 0;
+  if (displayEntities.length > MAX_LEAVES) {
+    truncatedCount = displayEntities.length - MAX_LEAVES;
+    displayEntities = [...displayEntities]
+      .sort((a, b) => b.claim_count - a.claim_count)
+      .slice(0, MAX_LEAVES);
+  }
+
+  if (displayEntities.length === 0) {
+    status.textContent = 'No taxonomy data for the current filter.';
+    truncated.classList.add('hidden');
+    select(svgEl).selectAll('*').remove();
+    return;
+  }
+
+  const tree = buildHierarchy(displayEntities);
+  const root = hierarchy<TreeNode>(tree);
+
+  const rect = svgEl.getBoundingClientRect();
+  const width = rect.width || 1000;
+  const height = rect.height || 480;
+  // At narrow viewports, sacrifice outer label space to keep the ring readable.
+  const labelPadding = width < 600 ? 40 : 80;
+  const radius = Math.max(60, Math.min(width, height) / 2 - labelPadding);
+
+  cluster<TreeNode>().size([2 * Math.PI, radius])(root);
+
+  const svg = select(svgEl)
+    .attr('viewBox', `${-width / 2} ${-height / 2} ${width} ${height}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+  svg.selectAll('*').remove();
+
+  const g = svg.append('g');
+
+  // Links between parents and children — radial Bezier paths
+  g.append('g')
+    .attr('fill', 'none')
+    .attr('stroke', '#CBD5E1')
+    .attr('stroke-width', 0.8)
+    .selectAll('path')
+    .data(root.links())
+    .join('path')
+    .attr('d', linkRadial<unknown, any>()
+      .angle((d: any) => d.x)
+      .radius((d: any) => d.y) as any);
+
+  // Leaves: colored circles + labels
+  const node = g.append('g')
+    .selectAll('g')
+    .data(root.descendants())
+    .join('g')
+    .attr('transform', (d: any) => `rotate(${(d.x * 180) / Math.PI - 90}) translate(${d.y},0)`);
+
+  // Internal-node ticks: tiny gray dots to mark taxonomic forks
+  node.filter(d => !!d.children)
+    .append('circle')
+    .attr('r', 1.2)
+    .attr('fill', '#94A3B8');
+
+  // Leaf circles: bio_category color, size by claim_count
+  const leaves = node.filter(d => !d.children && !!d.data.entity);
+  leaves.append('circle')
+    .attr('r', (d: any) => {
+      const n = Math.max(1, d.data.entity.claim_count);
+      return 2 + Math.min(5, Math.sqrt(n) * 0.4);
+    })
+    .attr('fill', (d: any) => TAXA_COLORS[d.data.entity.bio_category || 'other'] || TAXA_COLORS.other)
+    .attr('stroke', '#fff')
+    .attr('stroke-width', 0.5)
+    .attr('data-entity-id', (d: any) => d.data.entity.id)
+    .style('cursor', 'pointer')
+    .on('mouseenter', function (_e, d: any) {
+      const id = d.data.entity.id;
+      select(this).attr('stroke', '#000').attr('stroke-width', 1.5);
+      document.dispatchEvent(new CustomEvent('atlas:taxon-hover', { detail: { entityId: id } }));
+    })
+    .on('mouseleave', function () {
+      select(this).attr('stroke', '#fff').attr('stroke-width', 0.5);
+      document.dispatchEvent(new CustomEvent('atlas:taxon-hover', { detail: { entityId: null } }));
+    })
+    .on('click', (_e, d: any) => {
+      if (d.data.entity.slug) window.location.href = `/entity/${d.data.entity.slug}`;
+    });
+
+  // Leaf labels — only render if total leaf count is low enough to read.
+  // Narrow viewports get a tighter cap (60) since labels overlap at small radii.
+  const leafLabelCap = width < 600 ? 60 : 120;
+  if (displayEntities.length <= leafLabelCap) {
+    leaves.append('text')
+      .attr('dy', '0.31em')
+      .attr('x', (d: any) => (d.x < Math.PI ? 6 : -6))
+      .attr('text-anchor', (d: any) => (d.x < Math.PI ? 'start' : 'end'))
+      .attr('transform', (d: any) => (d.x >= Math.PI ? 'rotate(180)' : null))
+      .attr('font-size', '9px')
+      .attr('font-style', 'italic')
+      .attr('font-family', 'system-ui, sans-serif')
+      .attr('fill', '#1F2937')
+      .text((d: any) => d.data.entity.scientific_name)
+      .style('pointer-events', 'none');
+  }
+
+  // Internal-node labels (family/order level) — visible only at low leaf counts
+  const internalLabelCap = width < 600 ? 30 : 60;
+  if (displayEntities.length <= internalLabelCap) {
+    node.filter(d => !!d.children && d.depth > 0 && d.depth <= 4)
+      .append('text')
+      .attr('dy', '-0.3em')
+      .attr('x', 0)
+      .attr('text-anchor', 'middle')
+      .attr('transform', (d: any) => (d.x >= Math.PI ? 'rotate(180)' : null))
+      .attr('font-size', '8px')
+      .attr('font-family', 'system-ui, sans-serif')
+      .attr('fill', '#64748B')
+      .text((d: any) => d.data.name)
+      .style('pointer-events', 'none');
+  }
+
+  status.textContent = `${displayEntities.length} taxa rendered`;
+  if (truncatedCount > 0) {
+    truncated.textContent = `Top ${MAX_LEAVES} of ${displayEntities.length + truncatedCount} — narrow filters to see more`;
+    truncated.classList.remove('hidden');
+  } else {
+    truncated.classList.add('hidden');
+  }
+}
+
+// Listen for graph-hover events; highlight matching leaf
+document.addEventListener('atlas:graph-hover', (ev: Event) => {
+  const detail = (ev as CustomEvent).detail;
+  const id = detail?.entityId;
+  select(svgEl).selectAll('circle[data-entity-id]')
+    .attr('stroke', function () {
+      const thisId = (this as Element).getAttribute('data-entity-id');
+      return thisId && String(id) === thisId ? '#000' : '#fff';
+    })
+    .attr('stroke-width', function () {
+      const thisId = (this as Element).getAttribute('data-entity-id');
+      return thisId && String(id) === thisId ? 2 : 0.5;
+    });
+});
+
+(window as any).atlasDendrogram = {
+  update(nodes: Entity[]) {
+    render(nodes);
+  },
+  ready: true,
+};
+
+document.dispatchEvent(new CustomEvent('atlas:dendrogram-ready'));
+</script>

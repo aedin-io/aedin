@@ -1,0 +1,39 @@
+---
+// TraitSummary — sidebar panel that condenses an entity's sourced trait CLAIMS
+// (entity_trait_claims) into one line per trait: numeric traits become a
+// min–max range across all sources, list traits a union of members, categorical
+// traits the distinct values. The full per-source breakdown lives in the Traits
+// tab (EntityClaimsTable); this is the at-a-glance envelope.
+//
+// Distinct from EntityEnvelope ("Profile"), which reads pre-aggregated scalar
+// columns off the entities table. This reads the live, multi-source claims.
+
+import type { TraitSummary } from '../lib/trait-summary';
+
+interface Props {
+  summaries: TraitSummary[];
+}
+const { summaries } = Astro.props;
+---
+
+{summaries.length > 0 && (
+  <aside class="bg-white border border-nature-700/15 rounded-md p-4 text-sm">
+    <h2 class="text-xs uppercase tracking-wide text-earth-700 mb-1">Trait summary</h2>
+    <p class="text-[10px] text-earth-700/60 mb-3 leading-snug">
+      Aggregated across sources — ranges for measurements, combined parts. See the Traits tab for each sourced value.
+    </p>
+    <dl class="space-y-2">
+      {summaries.map((s) => (
+        <div class="grid grid-cols-[110px_1fr] gap-2 text-xs">
+          <dt class="text-earth-700 capitalize">{s.label}</dt>
+          <dd class="text-nature-900 break-words">
+            <span>{s.display}</span>
+            {s.count > 1 && (
+              <span class="text-earth-700/50 text-[10px]" title={`${s.count} sourced claims`}> ·{s.count}</span>
+            )}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  </aside>
+)}

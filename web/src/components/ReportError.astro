@@ -1,0 +1,85 @@
+---
+/**
+ * ReportError — the simplest possible "report a mistake" affordance.
+ *
+ * No backend, no auth, no database: a <details> disclosure with a textarea
+ * and a button that opens the user's email client (mailto:) pre-filled with
+ * the page URL, the record context, and their note. Works on the static site
+ * with zero infrastructure.
+ *
+ * Set REPORT_EMAIL to a real monitored inbox before relying on this.
+ */
+interface Props {
+  context?: string; // short label for the record being reported (e.g. scientific name, claim id)
+}
+const { context = '' } = Astro.props;
+const REPORT_EMAIL = 'corrections@aedin.io';
+---
+<details class="report-error" data-pagefind-ignore>
+  <summary>Report an error</summary>
+  <div class="report-error__body">
+    <p>Spotted a mistake in this record? Describe it — your note opens in your email client and goes to the AEDIN maintainers.</p>
+    <textarea id="re-note" rows="3" placeholder="What's wrong? Cite the source if you can."></textarea>
+    <button type="button" id="re-send">Send by email ↗</button>
+  </div>
+</details>
+
+<script is:inline define:vars={{ REPORT_EMAIL, context }}>
+  (() => {
+    const btn = document.getElementById('re-send');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      const note = (document.getElementById('re-note') || {}).value || '';
+      const subject = `AEDIN error report: ${context || location.pathname}`;
+      const body =
+        `Page: ${location.href}\n` +
+        (context ? `Record: ${context}\n` : '') +
+        `\nDescription of the error:\n${note}\n`;
+      location.href = `mailto:${REPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    });
+  })();
+</script>
+
+<style>
+  .report-error { margin-top: 1rem; font-size: 0.85rem; }
+  .report-error > summary {
+    cursor: pointer;
+    color: var(--color-earth-700, #6b4f2a);
+    list-style: none;
+  }
+  .report-error > summary::-webkit-details-marker { display: none; }
+  .report-error > summary::before { content: "✎ "; }
+  .report-error > summary:hover {
+    color: var(--color-nature-700, #2f6a31);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .report-error__body { margin-top: 0.6rem; }
+  .report-error__body p {
+    font-size: 0.8rem;
+    color: var(--color-earth-700, #6b4f2a);
+    margin: 0 0 0.4rem;
+    max-width: 40rem;
+  }
+  .report-error textarea {
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid rgba(47, 106, 49, 0.30);
+    border-radius: var(--radius, 6px);
+    font: inherit;
+    font-size: 0.85rem;
+    box-sizing: border-box;
+  }
+  .report-error button {
+    margin-top: 0.4rem;
+    font: inherit;
+    font-size: 0.82rem;
+    padding: 0.35rem 0.9rem;
+    border: 1px solid var(--color-nature-700, #2f6a31);
+    background: var(--color-nature-50, #f4faf3);
+    color: var(--color-nature-900, #173d1a);
+    border-radius: var(--radius, 6px);
+    cursor: pointer;
+  }
+  .report-error button:hover { background: #fbfefa; }
+</style>

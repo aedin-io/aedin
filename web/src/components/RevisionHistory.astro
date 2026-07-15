@@ -1,0 +1,55 @@
+---
+// Modification-history section — the audit trail of programmatic corrections
+// (GBIF taxonomy re-resolution, bio_category reclassification, rank-floor
+// quarantine, …) for one entity or claim. Renders nothing when empty.
+import type { Revision } from '../lib/queries-d1';
+
+const { revisions } = Astro.props as { revisions: Revision[] };
+
+// Group fields changed in the same event (same time + method + actor).
+const groups = new Map<string, { meta: Revision; rows: Revision[] }>();
+for (const r of revisions) {
+  const k = `${r.applied_at}|${r.method}|${r.changed_by}`;
+  if (!groups.has(k)) groups.set(k, { meta: r, rows: [] });
+  groups.get(k)!.rows.push(r);
+}
+
+function methodLabel(m: string | null): string {
+  switch (m) {
+    case 'gbif_accepted_name_match': return 'GBIF accepted-name match';
+    case 'gbif_abstain': return 'GBIF resolution — abstained (flagged for review)';
+    case 'curated_genus_reclassify': return 'bio_category reclassification (curated genus)';
+    case 'rank_floor_quarantine': return 'rank-floor quarantine';
+    default: return m || 'modification';
+  }
+}
+function fmtDate(s: string | null): string { return s ? s.slice(0, 10) : ''; }
+---
+{revisions.length > 0 && (
+  <section class="mb-10 bg-white border border-nature-700/15 rounded p-4" data-pagefind-ignore>
+    <h2 class="text-sm uppercase tracking-wide text-earth-700 mb-1">
+      Modification history <span class="text-earth-700/60 normal-case">· {revisions.length} {revisions.length === 1 ? 'change' : 'changes'}</span>
+    </h2>
+    <p class="text-xs text-earth-700/80 mb-3">Programmatic corrections applied to this record, with old → new values and provenance.</p>
+    <ul class="space-y-3">
+      {Array.from(groups.values()).map(g => (
+        <li class="border-b border-nature-700/10 pb-2 last:border-0 last:pb-0">
+          <div class="text-sm font-medium text-nature-900">{methodLabel(g.meta.method)}</div>
+          <dl class="mt-1 space-y-0.5">
+            {g.rows.map(r => (
+              <div class="text-xs font-mono text-earth-800">
+                <span class="text-earth-700">{r.field}:</span>
+                <span class="text-earth-700/70"> {r.before_value ?? '∅'}</span>
+                <span class="mx-1 text-earth-700">→</span>
+                <span class="text-nature-900">{r.after_value ?? '∅'}</span>
+              </div>
+            ))}
+          </dl>
+          <div class="text-xs text-earth-700/70 mt-1">
+            {g.meta.changed_by}{g.meta.applied_at ? ` · ${fmtDate(g.meta.applied_at)}` : ''}{g.meta.reason ? ` · ${g.meta.reason}` : ''}
+          </div>
+        </li>
+      ))}
+    </ul>
+  </section>
+)}

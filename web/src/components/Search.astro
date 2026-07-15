@@ -1,0 +1,67 @@
+---
+// Pagefind-backed full-text search. The index is generated at build time
+// (`pagefind --site dist` after `astro build`) and lazy-loaded by the
+// browser on first interaction. ~50-100 KB total client cost, served
+// from the same CDN as the rest of the site.
+//
+// We use the prebuilt PagefindUI component (a vanilla-JS search box +
+// result panel) and override its CSS variables to match our nature/earth
+// theme. If we outgrow this UI, we can swap to calling the Pagefind JS
+// API directly and rendering custom result components.
+//
+// Entity name search (taxa) uses a build-time JSON index (entity-index.json)
+// loaded lazily on first focus. It filters by scientific_name / common_name
+// with case-insensitive substring matching and links to /entity/<slug>.
+---
+
+<link href="/pagefind/pagefind-ui.css" rel="stylesheet" />
+<div id="search" class="pagefind-skin"></div>
+
+<script is:inline src="/pagefind/pagefind-ui.js"></script>
+<script is:inline>
+  window.addEventListener('DOMContentLoaded', () => {
+    new PagefindUI({
+      element: '#search',
+      showSubResults: true,
+      showImages: false,
+      pageSize: 8,
+      resetStyles: false,
+      placeholder: 'Search sources, regions & interactions...',
+      translations: {
+        zero_results: 'No matching entities. Try a scientific name or English common name.',
+        many_results: 'Showing the top results. Refine your search to narrow down.'
+      }
+    });
+  });
+</script>
+
+<div class="entity-search-wrap" style="margin-top:1.25rem;">
+  <label for="entity-search" style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:0.35rem;">Search taxa by name</label>
+  <input id="entity-search" type="search" placeholder="Search taxa by name…" autocomplete="off"
+    style="width:100%;padding:0.5rem 0.75rem;border:1px solid var(--sl-color-gray-4,#ccc);border-radius:0.375rem;font-size:0.95rem;background:var(--sl-color-bg,#fff);color:inherit;" />
+  <ul id="entity-search-results" role="listbox" hidden
+    style="list-style:none;margin:0.25rem 0 0;padding:0;border:1px solid var(--sl-color-gray-4,#ccc);border-radius:0.375rem;background:var(--sl-color-bg,#fff);max-height:18rem;overflow-y:auto;"></ul>
+</div>
+
+<script is:inline>
+  (() => {
+    const input = document.getElementById('entity-search');
+    const list = document.getElementById('entity-search-results');
+    if (!input || !list) return;
+    let index = null;
+    async function ensure() { if (!index) index = await fetch('/entity-index.json').then(r => r.json()).catch(() => []); }
+    function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+    function render(q) {
+      const t = q.trim().toLowerCase();
+      if (!t || !index) { list.hidden = true; list.innerHTML = ''; return; }
+      const hits = index.filter(e =>
+        (e.scientific_name && e.scientific_name.toLowerCase().includes(t)) ||
+        (e.common_name && e.common_name.toLowerCase().includes(t))
+      ).slice(0, 20);
+      list.innerHTML = hits.map(e => `<li style="padding:0.4rem 0.75rem;border-bottom:1px solid var(--sl-color-gray-5,#eee);"><a href="/entity/${encodeURIComponent(e.slug)}" style="text-decoration:none;color:inherit;display:block;">${esc(e.scientific_name)}${e.common_name ? ' — ' + esc(e.common_name) : ''}</a></li>`).join('');
+      list.hidden = hits.length === 0;
+    }
+    input.addEventListener('focus', ensure, { once: true });
+    input.addEventListener('input', async () => { await ensure(); render(input.value); });
+  })();
+</script>

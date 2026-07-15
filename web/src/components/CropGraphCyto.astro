@@ -1,0 +1,734 @@
+---
+/**
+ * CropGraphCyto — Cytoscape-rendered 4-level BFS web for a focus crop.
+ * Replaces the D3 sunburst with the same engine + interaction model as
+ * /atlas (AtlasGraphCyto), so users see one consistent network UX across
+ * /atlas and /crop-web.
+ *
+ *   window.cropGraph.render(cropId, atlas, regionFilter?)
+ *
+ * Default layout = concentric-by-depth: focus crop in the center, L1 on
+ * the inner ring, L4 on the outermost — same mental model as the prior
+ * sunburst rings. Switcher toggles to Force / Tree / Grid for alternate
+ * perspectives. Slice color = agroeco_bucket from the canonical palette.
+ *
+ * BFS rules (same as the prior sunburst):
+ *   - first-seen-depth wins (no entity appears at two depths)
+ *   - 80-node-per-ring cap, with truncation banner
+ *   - edges are treated as undirected for traversal
+ *
+ * regionFilter = { scope?, country?, subdivision? } — when any field is
+ * set, edges are pre-filtered before BFS so depths reflect only the
+ * region-scoped interaction subgraph.
+ */
+---
+<div id="crop-graph-container" class="relative w-full h-full">
+  <div id="crop-graph-canvas" class="w-full h-full"></div>
+  <div class="absolute top-2 left-2 right-2 flex items-start justify-between gap-2 pointer-events-none">
+    <div class="bg-white/80 backdrop-blur-sm border border-nature-700/15 rounded px-2 py-1 text-[11px] text-earth-700 pointer-events-auto max-w-[280px]">
+      <span id="crop-graph-status">Pick a crop on the left to see its interaction web.</span>
+    </div>
+    <div class="flex gap-1 pointer-events-auto">
+      <div class="bg-white/80 backdrop-blur-sm border border-nature-700/15 rounded inline-flex text-[11px] overflow-hidden" role="tablist" aria-label="Layout">
+        <button class="cropgr-layout px-2 py-0.5 bg-nature-700 text-white font-medium" data-layout="x" aria-selected="true">X</button>
+        <button class="cropgr-layout px-2 py-0.5 text-nature-700 hover:bg-nature-50" data-layout="concentric" aria-selected="false">Rings</button>
+        <button class="cropgr-layout px-2 py-0.5 text-nature-700 hover:bg-nature-50" data-layout="fcose" aria-selected="false">Force</button>
+        <button class="cropgr-layout px-2 py-0.5 text-nature-700 hover:bg-nature-50" data-layout="breadthfirst" aria-selected="false">Tree</button>
+        <button class="cropgr-layout px-2 py-0.5 text-nature-700 hover:bg-nature-50" data-layout="grid" aria-selected="false">Grid</button>
+      </div>
+      <div id="crop-graph-truncated" class="hidden bg-amber-50 border border-amber-300 rounded px-2 py-1 text-[11px] text-amber-900"></div>
+    </div>
+  </div>
+  <div id="crop-graph-tooltip" class="hidden absolute z-10 bg-white border border-nature-700/30 rounded shadow-lg px-3 py-2 text-xs max-w-xs pointer-events-none"></div>
+  <button id="crop-graph-clear" class="hidden absolute bottom-2 left-2 z-10 bg-white/85 backdrop-blur-sm border border-nature-700/25 rounded px-2 py-1 text-[11px] text-nature-800 hover:bg-nature-50 shadow-sm pointer-events-auto">✕ Clear selection</button>
+  <div id="crop-graph-keymap" class="hidden absolute bottom-2 right-2 z-10 bg-white/85 backdrop-blur-sm border border-nature-700/20 rounded-md p-1 pointer-events-none">
+    <svg width="196" height="172" viewBox="0 0 210 184" role="img" aria-label="X layout direction key" style="font-family:ui-sans-serif,system-ui,sans-serif">
+      <line x1="105" y1="90" x2="52" y2="48" stroke="#cbd5e1" stroke-width="1"/>
+      <line x1="105" y1="90" x2="158" y2="48" stroke="#cbd5e1" stroke-width="1"/>
+      <line x1="105" y1="90" x2="105" y2="42" stroke="#cbd5e1" stroke-width="1"/>
+      <line x1="105" y1="90" x2="105" y2="136" stroke="#cbd5e1" stroke-width="1"/>
+      <line x1="105" y1="90" x2="52" y2="136" stroke="#cbd5e1" stroke-width="1"/>
+      <line x1="105" y1="90" x2="158" y2="136" stroke="#cbd5e1" stroke-width="1"/>
+      <circle cx="78" cy="114" r="4" fill="#EC4899"/>
+      <circle cx="52" cy="136" r="4" fill="#14B8A6"/>
+      <circle cx="132" cy="114" r="4" fill="#FB923C"/>
+      <circle cx="158" cy="136" r="4" fill="#EF4444"/>
+      <circle cx="52" cy="48" r="4" fill="#6366F1"/>
+      <circle cx="158" cy="48" r="4" fill="#3B82F6"/>
+      <circle cx="105" cy="42" r="4" fill="#65A30D"/>
+      <circle cx="105" cy="136" r="4" fill="#A16207"/>
+      <circle cx="105" cy="90" r="6.5" fill="#22C55E" stroke="#1F2937" stroke-width="1.5"/>
+      <text x="105" y="32" text-anchor="middle" font-size="8.5" fill="#65A30D">companions</text>
+      <text x="48" y="40" text-anchor="middle" font-size="8.5" fill="#6366F1">mutualists</text>
+      <text x="162" y="40" text-anchor="middle" font-size="8.5" fill="#3B82F6">pollinators</text>
+      <text x="125" y="94" text-anchor="start" font-size="9" font-weight="700" fill="#166534">CROP</text>
+      <text x="38" y="152" text-anchor="middle" font-size="8.5" fill="#EC4899">pathogens</text>
+      <text x="38" y="162" text-anchor="middle" font-size="8" fill="#14B8A6">antagonists</text>
+      <text x="105" y="152" text-anchor="middle" font-size="8.5" fill="#A16207">weeds</text>
+      <text x="172" y="152" text-anchor="middle" font-size="8.5" fill="#FB923C">pests</text>
+      <text x="172" y="162" text-anchor="middle" font-size="8" fill="#EF4444">predators</text>
+      <text x="105" y="179" text-anchor="middle" font-size="7.5" font-style="italic" fill="#94a3b8">inner = threat · outer = its enemy</text>
+    </svg>
+  </div>
+</div>
+
+<script>
+import cytoscape from 'cytoscape';
+import fcose from 'cytoscape-fcose';
+import { computeXLayout } from '../lib/x-layout';
+import { contextColor } from '../lib/graph-context-color';
+import { mountSelectionPanel, groupNeighbors } from '../lib/graph-panel';
+
+cytoscape.use(fcose);
+
+// Bucket palette — single source of truth is the design tokens in global.css
+// (:root --bucket-*). Read them at runtime so graph node fills track the design
+// system; the literal hex is a fallback if a var is ever missing (canvas needs
+// a concrete color, so var() can't be passed to Cytoscape directly).
+const _css = getComputedStyle(document.documentElement);
+const _tok = (name, fallback) => (_css.getPropertyValue(name).trim() || fallback);
+const BUCKET_COLORS = {
+  producer:   _tok('--bucket-producer',   '#22C55E'),
+  herbivore:  _tok('--bucket-herbivore',  '#FB923C'),
+  predator:   _tok('--bucket-predator',   '#EF4444'),
+  parasitoid: _tok('--bucket-parasitoid', '#A855F7'),
+  pathogen:   _tok('--bucket-pathogen',   '#EC4899'),
+  mutualist:  _tok('--bucket-mutualist',  '#3B82F6'),
+  decomposer: _tok('--bucket-decomposer', '#A16207'),
+};
+const DEFAULT_COLOR = _tok('--bucket-fallback', '#94A3B8');
+
+const MAX_DEPTH = 4;
+const MAX_PER_RING = 80;
+
+const GLOBI_EDGE_COLOR = _tok('--globi-edge', '#9CA3AF');
+
+// Normalize the optional 4th render arg into a concrete view.
+function normalizeView(view) {
+  return {
+    source: view && view.source ? view.source : 'literature',
+    globi: view && view.globi ? view.globi : null,
+    hidden: new Set(view && view.hiddenCategories ? view.hiddenCategories : []),
+  };
+}
+
+const canvas = document.getElementById('crop-graph-canvas');
+const status = document.getElementById('crop-graph-status');
+const truncated = document.getElementById('crop-graph-truncated');
+const tooltip = document.getElementById('crop-graph-tooltip');
+const wrapper = document.getElementById('crop-graph-container');
+
+let cy = null;
+let activeLayout = 'x';
+
+const layoutOpts = () => ({
+  concentric: {
+    name: 'concentric',
+    animate: true,
+    animationDuration: 600,
+    fit: true,
+    padding: 30,
+    // Higher concentric value → closer to center. depth=0 (focus crop)
+    // should be innermost → return -depth so depth 0 gives 0 (max).
+    concentric: (n) => -n.data('depth'),
+    levelWidth: () => 1,
+    minNodeSpacing: 12,
+    spacingFactor: 1.5,
+  },
+  fcose: {
+    name: 'fcose',
+    animate: true,
+    animationDuration: 600,
+    fit: true,
+    padding: 30,
+    quality: 'default',
+    randomize: false,
+    nodeRepulsion: 8000,
+    idealEdgeLength: 80,
+    edgeElasticity: 0.45,
+    gravity: 0.25,
+    numIter: 2500,
+  },
+  breadthfirst: {
+    name: 'breadthfirst',
+    animate: true,
+    animationDuration: 600,
+    fit: true,
+    padding: 30,
+    directed: true,
+    spacingFactor: 1.1,
+    roots: () => (cy ? cy.nodes('[depth = 0]') : undefined),
+  },
+  grid: {
+    name: 'grid',
+    animate: true,
+    animationDuration: 500,
+    fit: true,
+    padding: 20,
+  },
+});
+
+let xExpanded = new Set();
+let xCellExpanded = new Set();              // quadrant cells the user expanded past the cap
+// X-layout density controls: cards (round-rectangles), capped per quadrant cell,
+// stacked tightly outward from the crop so the X reads compact like the data-flow map.
+// A cell with more than X_CAP partners gets a clickable "+N more" card to reveal the rest.
+const X_CAP = 16;                          // max cards shown per (side,valence,ring) cell before "+N more"
+const X_RING_X = [0, 250, 470, 670];       // horizontal distance per ring
+const X_GAP_TO_CROP = 64;                  // vertical gap from crop centre to the first card
+const X_CARD_GAP = 48;                     // vertical spacing between stacked cards
+function xEndpoint(side, self, other) {
+  // Side-column boxes dock on their left/right edge (toward the neighbour);
+  // centre-column boxes dock on top/bottom. `self`/`other` are {x,y} positions.
+  if (side !== 0) return (other.x < self.x) ? '-50% 0%' : '50% 0%';
+  return (other.y < self.y) ? '0% -50%' : '0% 50%';
+}
+function applyXLayout() {
+  if (!cy) return;
+  cy.remove('node.morebox');               // drop synthetic "+N more" nodes from a prior pass
+  const focusNode = cy.nodes('[depth = 0]');
+  if (!focusNode.length) return;
+  const focusId = focusNode.id();
+  const nodes = cy.nodes().map(n => ({ id: n.id(), bio_category: n.data('bioCategory'), primary_role: n.data('primaryRole') }));
+  const edges = cy.edges().map(e => ({ subject_id: e.data('source'), object_id: e.data('target'), interaction_category: e.data('category'), interaction_count: e.data('claimCount') }));
+  const placed = computeXLayout({ focusId, nodes, edges, expanded: xExpanded });
+  // Group placed nodes by quadrant cell, sort by claim weight, cap unless the cell is expanded.
+  const groups = new Map();
+  for (const [id, p] of placed) {
+    if (p.ring === 0) continue;
+    const key = `${p.side}|${p.valence}|${p.ring}`;
+    (groups.get(key) || groups.set(key, []).get(key)).push(id);
+  }
+  let hidden = 0;
+  const moreboxes = [];
+  const pos = new Map([[focusId, { x: 0, y: 0 }]]);
+  for (const [key, ids] of groups) {
+    const [side, valence, ring] = key.split('|').map(Number);
+    ids.sort((a, b) => (cy.getElementById(b).data('claimCount') || 0) - (cy.getElementById(a).data('claimCount') || 0));
+    const expanded = xCellExpanded.has(key);
+    const shown = expanded ? ids.length : Math.min(ids.length, X_CAP);
+    ids.slice(0, shown).forEach((id, i) => {
+      const dist = X_GAP_TO_CROP + i * X_CARD_GAP;          // stack outward from the crop
+      pos.set(id, { x: side * X_RING_X[ring], y: valence === 1 ? -dist : dist });
+    });
+    if (ids.length > X_CAP) {
+      if (!expanded) hidden += ids.length - X_CAP;
+      const dist = X_GAP_TO_CROP + shown * X_CARD_GAP;       // one slot past the last card
+      moreboxes.push({ id: `__more__${key}`, cellKey: key,
+        label: expanded ? '▲ show fewer' : `+${ids.length - X_CAP} more`,
+        x: side * X_RING_X[ring], y: valence === 1 ? -dist : dist });
+    }
+  }
+  cy.batch(() => {
+    cy.nodes().forEach(n => {
+      const xy = pos.get(n.id());
+      if (!xy) { n.style('display', 'none'); n.removeClass('xbox'); return; }
+      n.style('display', 'element');
+      const p = placed.get(n.id());
+      if (p) { n.data('contextRole', p.contextRole); n.data('color', contextColor(p.contextRole)); }
+      n.addClass('xbox');
+      n.position(xy);
+    });
+    moreboxes.forEach(m => cy.add({ group: 'nodes', classes: 'morebox',
+      data: { id: m.id, label: m.label, cellKey: m.cellKey }, position: { x: m.x, y: m.y } }));
+    // Dock edges by column: side-column boxes left/right (facing neighbour), centre top/bottom.
+    cy.edges().forEach(e => {
+      e.removeClass('xedge');
+      const sId = e.data('source'), tId = e.data('target');
+      const sp = pos.get(sId), tp = pos.get(tId);
+      if (!sp || !tp) return;
+      e.data('sEnd', xEndpoint((placed.get(sId) || {}).side || 0, sp, tp));
+      e.data('tEnd', xEndpoint((placed.get(tId) || {}).side || 0, tp, sp));
+      e.addClass('xedge');
+    });
+  });
+  cy.layout({ name: 'preset', fit: true, padding: 40, animate: true, animationDuration: 400 }).run();
+  document.getElementById('crop-graph-keymap')?.classList.remove('hidden');
+  if (status) {
+    const base = (status.textContent || '').replace(/ · ⊕ .*$/, '');
+    status.textContent = hidden ? `${base} · ⊕ +${hidden} hidden (tap a "+N more" card)` : base;
+  }
+}
+function resetNodeColors() {
+  if (!cy) return;
+  document.getElementById('crop-graph-keymap')?.classList.add('hidden');
+  cy.remove('node.morebox');
+  cy.edges().removeClass('xedge');
+  cy.batch(() => { cy.nodes().forEach(n => { n.style('display', 'element'); n.removeClass('xbox'); n.data('color', n.data('baseColor')); }); });
+}
+function toggleCell(key) {
+  if (!key) return;
+  if (xCellExpanded.has(key)) xCellExpanded.delete(key); else xCellExpanded.add(key);
+  if (activeLayout === 'x') applyXLayout();
+}
+function expandDefender(id) { xExpanded.add(String(id)); if (activeLayout === 'x') applyXLayout(); }
+
+function bfsFromCrop(cropId, edges, entitiesById) {
+  const depthOf = new Map([[cropId, 0]]);
+  const parentOf = new Map();
+  const ringCounts = [1, 0, 0, 0, 0];
+  let truncatedAtDepth = -1;
+
+  const byEntity = new Map();
+  for (const e of edges) {
+    if (!byEntity.has(e.subject_id)) byEntity.set(e.subject_id, []);
+    if (!byEntity.has(e.object_id)) byEntity.set(e.object_id, []);
+    byEntity.get(e.subject_id).push(e);
+    byEntity.get(e.object_id).push(e);
+  }
+
+  let frontier = [cropId];
+  for (let d = 1; d <= MAX_DEPTH; d++) {
+    const next = [];
+    let capacity = MAX_PER_RING;
+    for (const cur of frontier) {
+      const incident = byEntity.get(cur) || [];
+      for (const ed of incident) {
+        const other = ed.subject_id === cur ? ed.object_id : ed.subject_id;
+        if (depthOf.has(other)) continue;
+        if (!entitiesById.has(other)) continue;
+        if (capacity <= 0) { truncatedAtDepth = d; break; }
+        depthOf.set(other, d);
+        parentOf.set(other, cur);
+        next.push(other);
+        capacity--;
+        ringCounts[d]++;
+      }
+      if (capacity <= 0) break;
+    }
+    frontier = next;
+    if (!frontier.length) break;
+  }
+  return { depthOf, parentOf, ringCounts, truncatedAtDepth };
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function nodeSize(claimCount, isFocus) {
+  if (isFocus) return 32;
+  const n = Math.max(1, claimCount);
+  return 8 + Math.min(18, Math.sqrt(n) * 1.4);
+}
+
+function applyRegionFilter(edges, filter) {
+  if (!filter) return edges;
+  const { scope, country, subdivision } = filter;
+  if (!scope && !country && !subdivision) return edges;
+  return edges.filter(e => {
+    if (scope && !(e.scopes && e.scopes.includes(scope))) return false;
+    if (country && e.country !== country) return false;
+    if (subdivision && e.subdivision !== subdivision) return false;
+    return true;
+  });
+}
+
+function regionLabel(filter) {
+  if (!filter) return '';
+  return filter.subdivision || filter.country || filter.scope || '';
+}
+
+function render(cropId, atlas, regionFilter, view) {
+  xExpanded = new Set();
+  xCellExpanded = new Set();
+  document.getElementById('crop-graph-keymap')?.classList.add('hidden');
+  document.getElementById('crop-graph-clear')?.classList.add('hidden');
+  if (panel) panel.clear();
+  const V = normalizeView(view);
+  if (cy) { cy.destroy(); cy = null; }
+
+  if (!cropId || !atlas) {
+    status.textContent = 'Pick a crop on the left to see its interaction web.';
+    truncated.classList.add('hidden');
+    return;
+  }
+
+  const entitiesById = new Map(atlas.entities.map(e => [e.id, e]));
+  const focus = entitiesById.get(cropId);
+  if (!focus) {
+    status.textContent = 'Crop not found in atlas data.';
+    return;
+  }
+
+  const filteredEdges = applyRegionFilter(atlas.edges, regionFilter);
+  const regionTag = regionLabel(regionFilter);
+
+  const bfs = bfsFromCrop(cropId, filteredEdges, entitiesById);
+  const litEmpty = bfs.depthOf.size < 2;
+  const globiEmpty = !((V.source === 'globi' || V.source === 'both') && V.globi && V.globi.edges.length);
+  if (litEmpty && (V.source === 'literature' || globiEmpty)) {
+    status.textContent = V.source !== 'literature'
+      ? `${focus.scientific_name} has no GloBI interactions recorded.`
+      : (regionTag
+          ? `${focus.scientific_name} has no edges in “${regionTag}”.`
+          : `${focus.scientific_name} has no edges in the corpus.`);
+    truncated.classList.add('hidden');
+    return { categories: [] };
+  }
+
+  // ── Assemble nodes/edges from the selected source(s) ──
+  const showLit = V.source === 'literature' || V.source === 'both';
+  const showGlobi = (V.source === 'globi' || V.source === 'both') && V.globi;
+
+  // depth map: literature BFS depths, plus GloBI endpoint depths (lit wins on tie)
+  const depthOf = new Map();
+  if (showLit) for (const [id, d] of bfs.depthOf) depthOf.set(id, d);
+  depthOf.set(cropId, 0);
+
+  const nodeMeta = new Map();           // id -> entity-ish { scientific_name, ... }
+  if (showLit) for (const id of bfs.depthOf.keys()) nodeMeta.set(id, entitiesById.get(id));
+  if (showGlobi) {
+    for (const n of V.globi.nodes) {
+      if (!depthOf.has(n.id)) depthOf.set(n.id, n.depth);
+      if (!nodeMeta.has(n.id)) nodeMeta.set(n.id, {
+        id: n.id, scientific_name: n.scientific_name, common_name: n.common_name,
+        slug: n.slug, bio_category: n.bio_category, agroeco_bucket: null,
+        primary_role: n.primary_role, claim_count: n.interaction_count || 0, globi_only: true,
+      });
+    }
+  }
+  nodeMeta.set(cropId, focus);
+
+  // Candidate edges, each normalized to { key, subject_id, object_id, provenance, category, label }
+  const litEdges = showLit ? filteredEdges
+    .filter(e => bfs.depthOf.has(e.subject_id) && bfs.depthOf.has(e.object_id))
+    .map(e => ({ key: `L${e.claim_id}`, subject_id: e.subject_id, object_id: e.object_id,
+                 provenance: 'literature', category: e.interaction_category || 'uncategorized',
+                 label: e.globi_term })) : [];
+  const globiEdges = showGlobi ? V.globi.edges
+    .map(e => ({ key: `G${e.id}`, subject_id: e.subject_id, object_id: e.object_id,
+                 provenance: 'globi', category: e.interaction_category || 'uncategorized',
+                 label: e.interaction_type_raw || 'interacts with' })) : [];
+  const allEdges = [...litEdges, ...globiEdges];
+
+  // Pre-filter category union (for the summary / checkbox list)
+  const catUnion = new Map();
+  for (const e of allEdges) catUnion.set(e.category, (catUnion.get(e.category) || 0) + 1);
+
+  // Apply the category filter, then keep only nodes that still have an edge (or are focus)
+  const visibleEdges = allEdges.filter(e => !V.hidden.has(e.category)
+    && depthOf.has(e.subject_id) && depthOf.has(e.object_id));
+  const connected = new Set([cropId]);
+  for (const e of visibleEdges) { connected.add(e.subject_id); connected.add(e.object_id); }
+
+  const elements = [
+    ...[...connected].filter(id => nodeMeta.has(id)).map(id => {
+      const e = nodeMeta.get(id);
+      const depth = depthOf.get(id) ?? 1;
+      return {
+        data: {
+          id: String(id),
+          label: e.scientific_name,
+          commonName: e.common_name || '',
+          slug: e.slug,
+          bioCategory: e.bio_category || 'other',
+          primaryRole: e.primary_role || '',
+          claimCount: e.claim_count,
+          globiOnly: !!e.globi_only,
+          depth,
+          color: depth === 0 ? '#1F2937' : (BUCKET_COLORS[e.agroeco_bucket] || DEFAULT_COLOR),
+          baseColor: depth === 0 ? '#1F2937' : (BUCKET_COLORS[e.agroeco_bucket] || DEFAULT_COLOR),
+          size: nodeSize(e.claim_count, depth === 0),
+        },
+      };
+    }),
+    ...visibleEdges.map(e => ({
+      data: {
+        id: e.key,
+        source: String(e.subject_id),
+        target: String(e.object_id),
+        globiTerm: e.label,
+        provenance: e.provenance,
+        category: e.category,
+      },
+    })),
+  ];
+
+  cy = cytoscape({
+    container: canvas,
+    elements,
+    minZoom: 0.1,
+    maxZoom: 8,
+    style: [
+      {
+        selector: 'node',
+        style: {
+          'background-color': 'data(color)',
+          'width': 'data(size)',
+          'height': 'data(size)',
+          'border-width': 0.5,
+          'border-color': '#fff',
+          'label': 'data(label)',
+          'font-size': 9,
+          'font-style': 'italic',
+          'color': '#1F2937',
+          'text-valign': 'center',
+          'text-halign': 'right',
+          'text-margin-x': 4,
+          'min-zoomed-font-size': 9,
+        },
+      },
+      {
+        selector: 'node[depth = 0]',
+        style: {
+          'font-size': 13,
+          'font-weight': 500,
+          'color': '#0F172A',
+          'border-width': 2,
+          'border-color': '#1F2937',
+          'min-zoomed-font-size': 1,
+        },
+      },
+      {
+        // X-layout: render entities as labelled cards (data-flow style), not dots.
+        selector: 'node.xbox',
+        style: {
+          'shape': 'round-rectangle',
+          'width': 152,
+          'height': 40,
+          'background-color': '#ffffff',
+          'background-opacity': 1,
+          'border-width': 3,
+          'border-color': 'data(color)',
+          'label': 'data(label)',
+          'text-valign': 'center',
+          'text-halign': 'center',
+          'text-margin-x': 0,
+          'text-wrap': 'wrap',
+          'text-max-width': 136,
+          'font-size': 10,
+          'font-style': 'italic',
+          'color': '#0f172a',
+          'min-zoomed-font-size': 0,
+        },
+      },
+      {
+        selector: 'node.xbox[depth = 0]',
+        style: {
+          'width': 172,
+          'height': 48,
+          'background-color': '#ecfdf5',
+          'border-width': 3,
+          'border-color': '#1F2937',
+          'font-size': 12,
+          'font-weight': 600,
+        },
+      },
+      {
+        selector: 'edge',
+        style: {
+          'line-color': '#CBD5E1',
+          'width': 1.2,
+          'target-arrow-shape': 'triangle',
+          'target-arrow-color': '#CBD5E1',
+          'arrow-scale': 0.7,
+          'curve-style': 'bezier',
+          'opacity': 0.7,
+        },
+      },
+      {
+        selector: 'edge[provenance = "globi"]',
+        style: {
+          'line-color': GLOBI_EDGE_COLOR,
+          'target-arrow-color': GLOBI_EDGE_COLOR,
+          'line-style': 'dashed',
+          'opacity': 0.55,
+        },
+      },
+      { selector: 'edge[category = "disease_resistance"], edge[category = "pest_resistance"]', style: { 'line-color': '#22C55E', 'target-arrow-color': '#22C55E', 'line-style': 'dashed', 'opacity': 0.9 } },
+      { selector: 'node.faded', style: { opacity: 0.12 } },
+      { selector: 'edge.faded', style: { opacity: 0.06 } },
+      {
+        selector: 'node.highlighted',
+        style: {
+          'border-width': 2.5,
+          'border-color': '#0F172A',
+          'z-index': 999,
+        },
+      },
+      {
+        selector: 'edge.highlighted',
+        style: { 'width': 2.2, 'opacity': 1, 'z-index': 998 },
+      },
+      { selector: 'node.selected', style: { 'border-width': 3, 'border-color': '#0F172A', 'z-index': 1000 } },
+      { selector: 'node.morebox', style: {
+          'shape': 'round-rectangle', 'width': 122, 'height': 30,
+          'background-color': '#f1f5f9', 'background-opacity': 1,
+          'border-width': 1.5, 'border-color': '#94A3B8', 'border-style': 'dashed',
+          'label': 'data(label)', 'text-valign': 'center', 'text-halign': 'center', 'text-margin-x': 0,
+          'font-size': 10, 'font-style': 'normal', 'color': '#475569', 'min-zoomed-font-size': 0,
+        } },
+      // X-layout edge docking — endpoints set per-edge in applyXLayout (data-driven).
+      { selector: 'edge.xedge', style: { 'source-endpoint': 'data(sEnd)', 'target-endpoint': 'data(tEnd)' } },
+    ],
+    layout: layoutOpts()[activeLayout] || { name: 'preset' },
+  });
+
+  // Force a remeasure + fit
+  requestAnimationFrame(() => {
+    if (!cy) return;
+    cy.resize();
+    cy.fit(undefined, 20);
+  });
+  cy.one('layoutstop', () => {
+    if (!cy) return;
+    cy.resize();
+    cy.fit(undefined, 20);
+  });
+
+  cy.on('mouseover', 'node', (evt) => {
+    const n = evt.target;
+    if (n.hasClass('morebox')) return;
+    if (cy.nodes('.selected').length) {
+      n.removeClass('faded'); n.addClass('highlighted');   // selection active: just reveal the hovered node
+    } else {
+      cy.elements().not(n.closedNeighborhood()).addClass('faded');
+      n.addClass('highlighted');
+    }
+    const d = n.data();
+    tooltip.innerHTML = `
+      <div class="italic font-medium text-nature-900">${escapeHtml(d.label)}</div>
+      ${d.commonName ? `<div class="text-earth-700">${escapeHtml(d.commonName)}</div>` : ''}
+      <div class="mt-1 text-[10px] text-earth-700">
+        ${d.depth === 0 ? '<span class="font-mono">focus crop</span>' : `L${d.depth}`} ·
+        <span class="font-mono">${d.bioCategory}</span>
+        ${d.primaryRole ? ` · <span class="font-mono">${d.primaryRole}</span>` : ''}
+      </div>
+      <div class="text-[10px] text-earth-700">${d.globiOnly ? `${d.claimCount} GloBI interactions (aggregated)` : `${d.claimCount} claims in corpus`}</div>
+      <div class="text-[10px] text-nature-700 mt-1">Double-click to open entity page</div>
+    `;
+    tooltip.classList.remove('hidden');
+  });
+  cy.on('mouseout', 'node', (evt) => {
+    const n = evt.target;
+    const sel = cy.nodes('.selected');
+    if (sel.length) {
+      n.removeClass('highlighted');
+      if (!sel.closedNeighborhood().contains(n)) n.addClass('faded');   // restore the selection's fade
+    } else {
+      cy.elements().removeClass('faded').removeClass('highlighted');
+    }
+    tooltip.classList.add('hidden');
+  });
+  cy.on('dbltap', 'node', (evt) => {
+    const d = evt.target.data();
+    if (d.slug) window.location.href = `/entity/${d.slug}`;
+  });
+  if (panelRoot) {
+    cy.on('tap', 'node', (evt) => {
+      const tn = evt.target;
+      if (tn.hasClass('morebox')) { toggleCell(tn.data('cellKey')); return; }
+      selectNode(tn.id());
+    });
+    cy.on('tap', (evt) => { if (evt.target === cy) clearSelection(); });   // tap empty space clears
+  }
+
+  canvas.onmousemove = (e) => {
+    const r = wrapper.getBoundingClientRect();
+    tooltip.style.left = (e.clientX - r.left + 12) + 'px';
+    tooltip.style.top  = (e.clientY - r.top + 12) + 'px';
+  };
+
+  const ringTotals = bfs.ringCounts.slice(1).map((n, i) => `L${i + 1}:${n}`).join(' · ');
+  const regionSuffix = regionTag ? ` · region: ${regionTag}` : '';
+  status.textContent = `${focus.scientific_name} → ${ringTotals} · layout: ${activeLayout === 'concentric' ? 'rings' : activeLayout}${regionSuffix}`;
+  if (bfs.truncatedAtDepth > 0) {
+    truncated.textContent = `L${bfs.truncatedAtDepth} truncated at ${MAX_PER_RING} nodes — narrow corpus to see more`;
+    truncated.classList.remove('hidden');
+  } else {
+    truncated.classList.add('hidden');
+  }
+
+  if (activeLayout === 'x') applyXLayout();
+
+  return {
+    categories: [...catUnion.entries()]
+      .map(([category, n]) => ({ category, n }))
+      .sort((a, b) => b.n - a.n || a.category.localeCompare(b.category)),
+  };
+}
+
+// ── Selection panel (module-scope; callbacks close over cy which is updated per render) ──
+const panelRoot = document.getElementById('crop-graph-panel');
+let panel = null;
+function nodeForPanel(id) {
+  const n = cy.getElementById(String(id)); if (!n.length) return undefined;
+  const d = n.data();
+  return { id: d.id, label: d.label, commonName: d.commonName, slug: d.slug, contextRole: d.contextRole, bioCategory: d.bioCategory, primaryRole: d.primaryRole };
+}
+function neighborsForPanel(id) {
+  const nodes = cy.nodes().map(n => ({ id: n.id(), label: n.data('label') }));
+  const edges = cy.edges().map(e => ({ subject_id: e.data('source'), object_id: e.data('target'), interaction_category: e.data('category') }));
+  return groupNeighbors(String(id), nodes, edges);
+}
+function defenderHasRing3(id) {
+  return cy.edges().some(e => {
+    const cat = e.data('category');
+    if (e.data('target') === String(id) && ['biocontrol','predation','parasitism'].includes(cat)) return true;
+    if ((e.data('source') === String(id) || e.data('target') === String(id)) &&
+        ['flower_visitor','nectar_provision','pollen_provision','provides_refuge','provides_alternative_prey','attracts_natural_enemy'].includes(cat)) return true;
+    return false;
+  });
+}
+function selectNode(id) {
+  id = String(id);
+  const sel = cy.nodes('.selected');
+  if (sel.length && sel.id() === id) { clearSelection(); return; }   // click the selected entity again → clear
+  cy.elements().removeClass('faded').removeClass('selected').removeClass('highlighted');
+  const n = cy.getElementById(id); if (!n.length) return;
+  cy.elements().not(n.closedNeighborhood()).addClass('faded');
+  n.addClass('selected');
+  if (panel) panel.select(id);
+  updateClearBtn();
+}
+function clearSelection() {
+  if (!cy) return;
+  cy.elements().removeClass('faded').removeClass('selected').removeClass('highlighted');
+  if (panel) panel.clear();
+  updateClearBtn();
+}
+function updateClearBtn() {
+  const b = document.getElementById('crop-graph-clear');
+  if (b) b.classList.toggle('hidden', !(cy && cy.nodes('.selected').length));
+}
+if (panelRoot) {
+  panel = mountSelectionPanel(panelRoot, {
+    getNode: nodeForPanel,
+    getNeighbors: neighborsForPanel,
+    onSelect: selectNode,
+    onExpand: (id) => { window.cropGraph.expandDefender(id); selectNode(id); },
+    canExpand: (id) => {
+      if (activeLayout !== 'x') return false;
+      const role = cy.getElementById(String(id)).data('contextRole');
+      const isDefender = role === 'pathogen_antagonist' || role === 'pest_predator' || role === 'pest_parasitoid';
+      return isDefender && defenderHasRing3(id);
+    },
+  });
+}
+document.getElementById('crop-graph-clear')?.addEventListener('click', clearSelection);
+
+document.querySelectorAll('.cropgr-layout').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const lay = btn.getAttribute('data-layout');
+    if (lay === activeLayout || !cy) return;
+    activeLayout = lay;
+    document.querySelectorAll('.cropgr-layout').forEach(b => {
+      const active = b.getAttribute('data-layout') === lay;
+      b.setAttribute('aria-selected', active ? 'true' : 'false');
+      b.classList.toggle('bg-nature-700', active);
+      b.classList.toggle('text-white', active);
+      b.classList.toggle('font-medium', active);
+      b.classList.toggle('text-nature-700', !active);
+      b.classList.toggle('hover:bg-nature-50', !active);
+    });
+    if (lay === 'x') { applyXLayout(); }
+    else { resetNodeColors(); cy.layout(layoutOpts()[lay]).run(); }
+    const txt = status.textContent || '';
+    status.textContent = txt.replace(/layout: \w+/, `layout: ${lay === 'concentric' ? 'rings' : lay}`);
+  });
+});
+
+window.cropGraph = { render, applyX: applyXLayout, expandDefender, ready: true };
+document.dispatchEvent(new CustomEvent('crop-graph-ready'));
+</script>

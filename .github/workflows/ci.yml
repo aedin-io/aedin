@@ -1,0 +1,48 @@
+name: CI
+
+# Runs the self-contained backend unit suite (node --test 'lib/**/*.test.js').
+# These tests use in-memory SQLite (':memory:') — they do NOT need the ~40GB
+# aedin.sqlite/globi.sqlite corpus, so they run cleanly on a stock runner.
+#
+# Also gates the OKF bundle's §9 conformance (vendored validator).
+#
+# NOT covered here (needs a DB fixture / heavier setup — see Tier-1 CI follow-ons):
+#   - web `npm run build` (reads the corpus DB for atlas + build-d1; the
+#     region-vocab Vite-bundling gate surfaces only here)
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend-unit:
+    name: backend unit tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Run unit tests
+        run: npm test
+
+  okf-validate:
+    name: OKF bundle conformance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install pyyaml
+        run: pip install 'pyyaml>=6'
+      - name: Validate .okf bundle (§9, strict)
+        run: python3 .github/scripts/okf_validate.py .okf --strict

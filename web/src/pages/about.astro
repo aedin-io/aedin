@@ -1,0 +1,106 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="About">
+  <article class="max-w-3xl mx-auto px-6 py-10">
+    <h1 class="text-3xl font-semibold text-nature-900">About AEDIN</h1>
+
+    <p class="text-base text-nature-900 mt-4">
+      AEDIN (AgroEcological Database of Interactions) is an agroecological knowledge base built for academic researchers and AI / bot consumers.
+      It curates atomic claims (pest, pathogen, beneficial, pollinator, mycorrhizal, soil, and crop-trait
+      relationships) from open-access scientific literature, exposing each verified claim with full source
+      provenance.
+    </p>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">What you should know before citing</h2>
+    <p class="text-sm text-earth-700">
+      AEDIN claims have been AI-extracted from open-access scientific literature and verified by an
+      automated multi-critic consensus process. They have not been human-reviewed. Before citing in your
+      own work, read the verbatim quote and original source alongside the claim to confirm it is correctly
+      contextualized for your use.
+    </p>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">License &amp; reuse</h2>
+    <p class="text-sm text-earth-700">
+      AEDIN distinguishes between three layers of content with different reuse rules:
+    </p>
+    <ul class="text-sm text-earth-700 list-disc pl-5 space-y-1 mt-2">
+      <li>
+        <strong class="text-nature-900">Claim metadata, entity records, and aggregate statistics</strong>
+        produced by this project (the structure linking claims to entities, sources, regions, and GloBI terms)
+        are released under
+        <a href="https://creativecommons.org/licenses/by/4.0/" class="text-nature-700 hover:underline" rel="noopener" target="_blank">CC&nbsp;BY&nbsp;4.0</a>.
+        Cite AEDIN when reusing.
+      </li>
+      <li>
+        <strong class="text-nature-900">Verbatim source quotes</strong> shown on each claim page are reproduced
+        under fair-use / academic-quotation principles. They retain the license of the original source,
+        which is displayed next to the quote (CC-BY, CC0, public-domain, USDA-PD, etc.).
+        Redistribution of a quote beyond what the source license permits is your responsibility, not AEDIN's.
+      </li>
+      <li>
+        <strong class="text-nature-900">Programmatic upstream data</strong>
+        (GloBI, GBIF, Wikidata, Trefle, USDA GRIN, Open-Meteo, SoilGrids) is federated into AEDIN under
+        each source's license — see
+        <a href="/data-sources" class="text-nature-700 hover:underline">/data-sources</a>
+        for the full catalogue and recommended citations.
+      </li>
+    </ul>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">How to cite AEDIN</h2>
+    <p class="text-sm text-earth-700">
+      When reusing data from AEDIN, please cite both AEDIN and the relevant upstream source(s). The
+      AEDIN knowledge base's canonical citation is:
+    </p>
+    <p class="text-xs text-earth-700 font-mono bg-earth-50 px-3 py-2 mt-2 rounded border border-earth-700/20">
+      LeBouef V. 2026. AEDIN: AgroEcological Database of Interactions. https://aedin.io
+    </p>
+    <p class="text-sm text-earth-700 mt-3">
+      For data originating from a specific upstream source — GloBI, GBIF, Wikidata, Trefle, USDA GRIN,
+      Open-Meteo, or SoilGrids — please also include the upstream's recommended citation. The full catalogue
+      of upstream sources, licenses, and recommended citations lives at
+      <a href="/data-sources" class="text-nature-700 hover:underline">/data-sources</a>.
+    </p>
+    <p class="text-sm text-earth-700 mt-2">
+      For data originating from a specific scientific paper or extension publication, the individual claim
+      page (e.g. <code>/claim/[id]</code>) carries the verbatim source quote, page number, and full citation
+      needed for academic reuse.
+    </p>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">Who runs this</h2>
+    <p class="text-sm text-earth-700">
+      AEDIN is developed by Vivek LeBouef, a graduate student in the Sustainable Agriculture program at the
+      University of Guam (UOG).
+    </p>
+    <p class="text-sm text-earth-700 mt-2">
+      <strong class="text-nature-900">ORCID:</strong>
+      <a href="https://orcid.org/0009-0003-9406-950X" class="text-nature-700 hover:underline" rel="noopener" target="_blank">0009-0003-9406-950X</a>
+    </p>
+    <p class="text-sm text-earth-700 mt-2">
+      <strong class="text-nature-900">Contact:</strong>
+      <a href="mailto:contact@aedin.io" class="text-nature-700 hover:underline">contact@aedin.io</a>
+    </p>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">Funding &amp; sustainability</h2>
+    <p class="text-sm text-earth-700">
+      Development to date has been unfunded. A funding application is in progress to support the next development
+      phases — corpus expansion beyond open-access sources, and academic and extension partnerships.
+      Inquiries from funders, research collaborators, and academic partners are welcome at the contact address
+      above.
+    </p>
+    <p class="text-sm text-earth-700 mt-2">
+      AEDIN is free to use and openly licensed. If it helps your work and you'd like to support its upkeep
+      and continued corpus expansion, a small donation goes directly toward that — thank you.
+    </p>
+    <a
+      href="https://paypal.me/vlebeef"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Donate via PayPal (opens in a new tab)"
+      class="mt-3 inline-flex items-center gap-1 text-sm text-nature-700 no-underline border border-nature-700/40 rounded-full px-3 py-1 hover:bg-nature-50 hover:border-nature-700/70 transition-colors"
+    >
+      <span aria-hidden="true">♥</span> Donate
+    </a>
+  </article>
+</Layout>

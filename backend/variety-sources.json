@@ -1,0 +1,350 @@
+[
+  {
+    "species_name": "Solanum lycopersicum",
+    "common_name": "Tomato",
+    "sources": [
+      {
+        "type": "html",
+        "name": "Penn State Extension – Selecting Tomato Cultivars",
+        "url": "https://extension.psu.edu/selecting-tomato-cultivars",
+        "region": "Mid-Atlantic United States"
+      },
+      {
+        "type": "html",
+        "name": "NC State – Tomato Cultivar Descriptions A–I",
+        "url": "https://cucurbitbreeding.wordpress.ncsu.edu/2016/05/31/tomato-a-i/",
+        "region": "North America"
+      },
+      {
+        "type": "html",
+        "name": "NC State – Tomato Cultivar Descriptions J–R",
+        "url": "https://cucurbitbreeding.wordpress.ncsu.edu/2016/05/31/tomato-j-r/",
+        "region": "North America"
+      },
+      {
+        "type": "html",
+        "name": "NC State – Tomato Cultivar Descriptions S–Z",
+        "url": "https://cucurbitbreeding.wordpress.ncsu.edu/2016/05/31/tomato-s-z/",
+        "region": "North America"
+      }
+    ]
+  },
+  {
+    "species_name": "Solanum tuberosum",
+    "common_name": "Potato",
+    "sources": [
+      {
+        "type": "html",
+        "name": "PlantVillage Penn State – Potato Varieties and Days to Maturity",
+        "url": "https://plantvillage.psu.edu/posts/5856-potato-when-to-plant-which-potato-variety-and-their-days-to-maturity",
+        "region": "General"
+      },
+      {
+        "type": "html",
+        "name": "MSU Extension – Upper Peninsula Potato Variety Trial",
+        "url": "https://www.canr.msu.edu/news/2017_upper_peninsula_potato_variety_trial_results",
+        "region": "Michigan"
+      }
+    ]
+  },
+  {
+    "species_name": "Lactuca sativa",
+    "common_name": "Lettuce",
+    "sources": [
+      {
+        "type": "html",
+        "name": "NC State – Leaf Lettuce Variety and Adaptation Trial",
+        "url": "https://newcropsorganics.ces.ncsu.edu/specialty-crops/specialty-crops-research/ducharme/",
+        "region": "North Carolina"
+      },
+      {
+        "type": "html",
+        "name": "Alabama CES – Lettuce Cultivars for High Tunnel Systems",
+        "url": "https://www.aces.edu/blog/topics/crop-production/lettuce-cultivars-for-high-tunnel-systems/",
+        "region": "Alabama"
+      }
+    ]
+  },
+  {
+    "species_name": "Capsicum annuum",
+    "common_name": "Pepper",
+    "sources": [
+      {
+        "type": "html",
+        "name": "NC State – Pepper Cultivar Descriptions A–L",
+        "url": "https://cucurbitbreeding.wordpress.ncsu.edu/2016/06/03/pepper-a-l/",
+        "region": "North America"
+      },
+      {
+        "type": "html",
+        "name": "NC State – Pepper Cultivar Descriptions M–Z",
+        "url": "https://cucurbitbreeding.wordpress.ncsu.edu/2016/06/03/pepper-m-z/",
+        "region": "North America"
+      },
+      {
+        "type": "html",
+        "name": "MSU Extension – 2022 Bell Pepper Cultivar Trial",
+        "url": "https://www.canr.msu.edu/resources/2022-bell-pepper-cultivar-trial",
+        "region": "Michigan"
+      }
+    ]
+  },
+  {
+    "species_name": "Zea mays",
+    "common_name": "Corn",
+    "sources": [
+      {
+        "type": "html",
+        "name": "OSU Horticulture – Sweet Corn for Fresh Market",
+        "url": "https://horticulture.oregonstate.edu/oregon-vegetables/corn-sweet-fresh-market",
+        "region": "Oregon"
+      },
+      {
+        "type": "html",
+        "name": "University of Illinois Extension – Sweet Corn Hort Answers",
+        "url": "https://web.extension.illinois.edu/hortanswers/plantdetail.cfm?PlantID=289&PlantTypeID=9",
+        "region": "Midwest"
+      }
+    ]
+  },
+  {
+    "species_name": "Brassica oleracea",
+    "common_name": "Broccoli",
+    "sources": [
+      {
+        "type": "html",
+        "name": "NC State Extension – Selecting Broccoli Cultivars for North Carolina",
+        "url": "https://content.ces.ncsu.edu/selecting-the-right-broccoli-cultivars-for-north-carolina",
+        "region": "North Carolina"
+      },
+      {
+        "type": "html",
+        "name": "Penn State Extension – 2014 Broccoli Variety Trial Results",
+        "url": "https://extension.psu.edu/2014-broccoli-variety-trial-results",
+        "region": "Pennsylvania"
+      }
+    ]
+  },
+  {
+    "species_name": "Allium cepa",
+    "common_name": "Onion",
+    "sources": [
+      {
+        "type": "html",
+        "name": "OSU Horticulture – Pearl, Set, and Boiler Onions",
+        "url": "https://horticulture.oregonstate.edu/oregon-vegetables/onions-pearl-sets-and-boilers-0",
+        "region": "Oregon"
+      }
+    ]
+  },
+  {
+    "species_name": "Fragaria × ananassa",
+    "common_name": "Strawberry",
+    "sources": [
+      {
+        "type": "html",
+        "name": "UMN Extension – Strawberry Varieties and Purchasing Plants",
+        "url": "https://extension.umn.edu/strawberry-farming/strawberry-varieties-and-purchasing-plants",
+        "region": "Minnesota"
+      },
+      {
+        "type": "html",
+        "name": "UMN Fruit Research – Strawberry Variety Trials 2021",
+        "url": "https://fruit.umn.edu/news/strawberry-variety-trials-2021",
+        "region": "Minnesota"
+      },
+      {
+        "type": "html",
+        "name": "UC Davis CAES – New UC Strawberry Varieties",
+        "url": "https://caes.ucdavis.edu/news/uc-davis-releases-5-strawberry-varieties-resistant-deadly-fungal-disease",
+        "region": "California"
+      }
+    ]
+  },
+  {
+    "species_name": "Malus domestica",
+    "common_name": "Apple",
+    "sources": [
+      {
+        "type": "html",
+        "name": "NC State Plant Toolbox – Malus domestica Cultivars",
+        "url": "https://plants.ces.ncsu.edu/plants/malus-domestica/",
+        "region": "Southeast United States"
+      }
+    ]
+  },
+  {
+    "species_name": "Vaccinium corymbosum",
+    "common_name": "Blueberry",
+    "sources": [
+      {
+        "type": "html",
+        "name": "OSU Extension – Blueberry Cultivars for the Pacific Northwest (PNW 656)",
+        "url": "https://extension.oregonstate.edu/catalog/pnw-656-blueberry-cultivars-pacific-northwest",
+        "region": "Pacific Northwest"
+      },
+      {
+        "type": "html",
+        "name": "Rutgers NJAES – Selecting Blueberry Varieties for the Home Garden",
+        "url": "https://njaes.rutgers.edu/fs419/",
+        "region": "New Jersey"
+      },
+      {
+        "type": "html",
+        "name": "UC Master Gardeners Santa Clara County – Blueberry Varieties",
+        "url": "https://ucanr.edu/site/uc-master-gardeners-santa-clara-county/blueberry-varieties",
+        "region": "California"
+      }
+    ]
+  },
+  {
+    "species_name": "Prunus persica",
+    "common_name": "Peach",
+    "sources": [
+      {
+        "type": "html",
+        "name": "UGA CAES – Peach Cultivar Chart",
+        "url": "https://peaches.caes.uga.edu/cultivars.html",
+        "region": "Georgia"
+      },
+      {
+        "type": "html",
+        "name": "UF/IFAS EDIS – Florida Peach and Nectarine Varieties",
+        "url": "https://ask.ifas.ufl.edu/publication/MG374",
+        "region": "Florida"
+      }
+    ]
+  },
+  {
+    "species_name": "Persea americana",
+    "common_name": "Avocado",
+    "sources": [
+      {
+        "type": "html",
+        "name": "UC Riverside – Avocado Variety Collection",
+        "url": "https://avocado.ucr.edu/variety-list",
+        "region": "California"
+      },
+      {
+        "type": "html",
+        "name": "UF/IFAS – Avocado Growing in the Florida Home Landscape",
+        "url": "https://ask.ifas.ufl.edu/publication/MG213",
+        "region": "Florida"
+      }
+    ]
+  },
+  {
+    "species_name": "Prunus dulcis",
+    "common_name": "Almond",
+    "sources": [
+      {
+        "type": "html",
+        "name": "USU Extension – Almonds in the Home Garden",
+        "url": "https://extension.usu.edu/yardandgarden/research/almonds-in-the-home-garden",
+        "region": "Intermountain West"
+      }
+    ]
+  },
+  {
+    "species_name": "Vitis vinifera",
+    "common_name": "Grape",
+    "sources": [
+      {
+        "type": "html",
+        "name": "Cornell VitisGen2 – Grape Selections with Trait Data",
+        "url": "https://blogs.cornell.edu/vitisgen2/home-2/grape-selections-from-the-vitisgen-and-vitisgen2-projects/",
+        "region": "Northeast United States"
+      },
+      {
+        "type": "html",
+        "name": "Cornell Grapes – Cornell-Released Grape Varieties",
+        "url": "https://blogs.cornell.edu/grapes/production/cornell-grape-varieties/",
+        "region": "New York"
+      }
+    ]
+  },
+  {
+    "species_name": "Oryza sativa",
+    "common_name": "Rice",
+    "sources": [
+      {
+        "type": "html",
+        "name": "University of Arkansas – 2024 Rice Performance Trials",
+        "url": "https://arkansascrops.uada.edu/posts/crops/rice/arkansas-rice-performance-trials-2024.aspx",
+        "region": "Arkansas"
+      }
+    ]
+  },
+  {
+    "species_name": "Triticum aestivum",
+    "common_name": "Wheat",
+    "sources": [
+      {
+        "type": "html",
+        "name": "NDSU – North Dakota Hard Red Winter Wheat Variety Trial Results 2023",
+        "url": "https://www.ndsu.edu/agriculture/extension/publications/north-dakota-hard-red-winter-wheat-variety-trial-results-2023-and-selection",
+        "region": "North Dakota"
+      }
+    ]
+  },
+  {
+    "species_name": "Glycine max",
+    "common_name": "Soybean",
+    "sources": [
+      {
+        "type": "html",
+        "name": "Auburn AAES – Soybean Variety Trials",
+        "url": "https://aaes.auburn.edu/variety-tests/soybean-variety-trials/",
+        "region": "Alabama"
+      }
+    ]
+  },
+  {
+    "species_name": "Gossypium hirsutum",
+    "common_name": "Cotton",
+    "sources": [
+      {
+        "type": "html",
+        "name": "Texas A&M AgriLife – Cotton Varieties for West Central Texas",
+        "url": "https://sanangelo.tamu.edu/agronomy/agronomy-publications/cotton-varieties-information-sheet-for-west-central-texas/",
+        "region": "Texas"
+      },
+      {
+        "type": "html",
+        "name": "Oklahoma State Extension – Choosing Which Cotton Varieties to Grow",
+        "url": "https://extension.okstate.edu/fact-sheets/choosing-which-cotton-varieties-to-grow.html",
+        "region": "Oklahoma"
+      }
+    ]
+  },
+  {
+    "species_name": "Juglans regia",
+    "common_name": "Walnut",
+    "sources": [
+      {
+        "type": "html",
+        "name": "UC Davis – UC Wolfskill Walnut Variety Release",
+        "url": "https://www.ucdavis.edu/food/news/uc-davis-releases-new-walnut-variety",
+        "region": "California"
+      }
+    ]
+  },
+  {
+    "species_name": "Citrus sinensis",
+    "common_name": "Citrus",
+    "sources": [
+      {
+        "type": "html",
+        "name": "University of Arizona Cooperative Extension – Low Desert Citrus Varieties",
+        "url": "https://extension.arizona.edu/publication/low-desert-citrus-varieties",
+        "region": "Arizona"
+      },
+      {
+        "type": "html",
+        "name": "UC Riverside – Givaudan Citrus Variety Collection",
+        "url": "https://citrusvariety.ucr.edu/",
+        "region": "California"
+      }
+    ]
+  }
+]

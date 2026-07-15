@@ -1,0 +1,142 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import CiteThis from '../../components/CiteThis.astro';
+import { getAllGlobiTerms, getInteractionPage, type Claim } from '../../lib/queries';
+
+export async function getStaticPaths() {
+  // Filter to GloBI terms that getInteractionPage() can fully resolve.
+  const terms = getAllGlobiTerms();
+  return terms
+    .filter(t => getInteractionPage(t.term) !== null)
+    .map(t => ({ params: { slug: t.term } }));
+}
+
+const { slug } = Astro.params;
+const page = getInteractionPage(slug!);
+if (!page) throw new Error(`Interaction page failed to resolve for slug "${slug}" — getStaticPaths should have filtered this`);
+
+const { term, claim_count, description, top_subjects, top_objects, top_regions, claims } = page;
+
+function bioBadge(cat: string | null): string {
+  const map: Record<string, string> = {
+    plantae: 'bg-green-50 border-green-300',
+    invertebrate: 'bg-orange-50 border-orange-300',
+    vertebrate: 'bg-blue-50 border-blue-300',
+    fungi: 'bg-pink-50 border-pink-300',
+    microbe: 'bg-purple-50 border-purple-300'
+  };
+  return `px-1.5 py-0.5 text-[10px] uppercase tracking-wide rounded border ${cat && map[cat] ? map[cat] : 'bg-nature-50 border-nature-700/20'}`;
+}
+---
+<Layout
+  title={`${term} — GloBI interaction type`}
+  description={`${claim_count} AI-consensus-verified agroecological claims with GloBI interaction type "${term}". ${description}`}
+>
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Dataset",
+    "name": `${term} — GloBI Relations Ontology term`,
+    "description": description,
+    "url": `https://aedin.io/interaction/${term}`,
+    "creator": { "@type": "Organization", "name": "AEDIN contributors" },
+    "isAccessibleForFree": true
+  })} />
+
+  <div class="max-w-7xl mx-auto px-6 py-10 grid md:grid-cols-3 gap-6">
+    <article class="md:col-span-2 min-w-0" data-pagefind-body data-pagefind-meta={`kind:interaction`} data-pagefind-filter="Kind:interaction">
+      <header class="mb-8 pb-6 border-b border-nature-700/15">
+        <p class="text-xs uppercase tracking-wide text-earth-700 mb-1">GloBI interaction</p>
+        <h1 class="font-mono text-3xl text-nature-900 mb-2">{term}</h1>
+        <p class="text-sm text-earth-700 max-w-2xl">{description}</p>
+        <p class="text-xs text-earth-700 mt-2">
+          <strong class="text-nature-900">{claim_count}</strong> claims with this interaction type. Vocabulary aligned with the
+          <a href="https://www.globalbioticinteractions.org/" class="text-nature-700 hover:underline" rel="noopener" target="_blank">Global Biotic Interactions</a> Relations Ontology.
+        </p>
+      </header>
+
+      {(top_subjects.length > 0 || top_objects.length > 0) && (
+        <section class="mb-10 grid md:grid-cols-2 gap-4">
+          {top_subjects.length > 0 && (
+            <div>
+              <h2 class="text-sm font-semibold text-nature-900 mb-2">Top subjects</h2>
+              <ul class="space-y-1.5 text-xs">
+                {top_subjects.map(e => (
+                  <li>
+                    <a href={`/entity/${e.slug}`} class="italic text-nature-900 hover:underline">{e.scientific_name}</a>
+                    {e.common_name && <span class="text-earth-700"> · {e.common_name}</span>}
+                    <span class="ml-1 text-nature-700">({e.n})</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {top_objects.length > 0 && (
+            <div>
+              <h2 class="text-sm font-semibold text-nature-900 mb-2">Top objects</h2>
+              <ul class="space-y-1.5 text-xs">
+                {top_objects.map(e => (
+                  <li>
+                    <a href={`/entity/${e.slug}`} class="italic text-nature-900 hover:underline">{e.scientific_name}</a>
+                    {e.common_name && <span class="text-earth-700"> · {e.common_name}</span>}
+                    <span class="ml-1 text-nature-700">({e.n})</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
+
+      <section class="mb-6">
+        <h2 class="text-lg font-semibold text-nature-900 mb-3">Recent claims (top 200)</h2>
+        <ul class="space-y-3">
+          {claims.map(c => (
+            <li class="bg-white border border-nature-700/15 rounded p-4">
+              <div class="text-xs text-earth-700 mb-2">
+                {c.subject_slug ? (
+                  <a href={`/entity/${c.subject_slug}`} class="italic text-nature-700 hover:underline">{c.subject_scientific_name}</a>
+                ) : (<span class="italic">{c.subject_scientific_name}</span>)}
+                <span class="font-mono mx-1">{term}</span>
+                {c.object_scientific_name && (
+                  c.object_slug ? (
+                    <a href={`/entity/${c.object_slug}`} class="italic text-nature-700 hover:underline">{c.object_scientific_name}</a>
+                  ) : (<span class="italic">{c.object_scientific_name}</span>)
+                )}
+              </div>
+              <blockquote class="text-sm text-nature-900 border-l-2 border-nature-700/40 pl-3 italic mb-2">
+                &ldquo;{c.source_quote}&rdquo;
+              </blockquote>
+              <p class="text-xs text-earth-700">
+                {c.source_authors && <span>{c.source_authors}</span>}
+                {c.source_year && <span> ({c.source_year})</span>}
+                {c.source_title && c.source_slug && <> · <a href={`/source/${c.source_slug}`} class="text-nature-700 hover:underline">{c.source_title}</a></>}
+                {c.source_page && <span> · p.&nbsp;{c.source_page}</span>}
+                <a href={`/claim/${c.id}`} class="ml-2 text-nature-700 hover:underline opacity-60 hover:opacity-100">#{c.id}</a>
+              </p>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </article>
+
+    <div class="md:col-span-1 space-y-4">
+      <aside class="bg-white border border-nature-700/15 rounded-md p-4 sticky top-4">
+        <h2 class="text-xs uppercase tracking-wide text-earth-700 mb-3">By region</h2>
+        <ul class="space-y-1.5 text-xs">
+          {top_regions.map(r => (
+            <li class="flex items-baseline justify-between gap-2">
+              <a href={`/region/${r.slug}`} class="text-nature-900 hover:underline">{r.region}</a>
+              <span class="text-earth-700 tabular-nums">{r.n}</span>
+            </li>
+          ))}
+        </ul>
+      </aside>
+      <CiteThis
+        kind="entity"
+        id={term}
+        title={`${term} — GloBI interaction type — AEDIN`}
+        url={`https://aedin.io/interaction/${term}`}
+      />
+    </div>
+  </div>
+</Layout>

@@ -1,0 +1,202 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+// Draft Terms of Service for AEDIN's public site + paid API. The effective
+// date is a placeholder until the paid API launches. NOTE (not legal advice):
+// appropriate for self-serve Developer/Team tiers; institutional contracts
+// ($5K/yr+) should get a licensing attorney's review before signing.
+---
+
+<Layout
+  title="Terms of Service"
+  description="Terms of Service for the AEDIN knowledge base, website, and API."
+  noindex={true}
+>
+  <article class="max-w-3xl mx-auto px-6 py-10">
+    <h1 class="text-3xl font-semibold text-nature-900">Terms of Service</h1>
+    <p class="text-sm text-earth-700 mt-1"><strong class="text-nature-900">Effective date:</strong> TBD — set when paid API launches.</p>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">1. Acceptance of these terms</h2>
+    <p class="text-sm text-earth-700">
+      These Terms of Service ("Terms") govern your access to and use of the website at
+      <a href="https://aedin.io" class="text-nature-700 hover:underline">aedin.io</a> and the AEDIN
+      application programming interface (the "API"), collectively the "Service." By accessing or using the
+      Service, you agree to be bound by these Terms. If you do not agree, do not use the Service.
+    </p>
+    <p class="text-sm text-earth-700 mt-2">
+      The Service is operated by Vivek LeBouef ("AEDIN," "we," "us," or "our"), an individual data
+      engineer based in Guam, United States. If and when AEDIN is conducted through a registered legal
+      entity, these Terms will be assigned to that entity and this paragraph will be updated.
+    </p>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">2. Definitions</h2>
+    <dl class="text-sm text-earth-700 space-y-2 mt-2">
+      <div>
+        <dt class="font-semibold text-nature-900">Free Surface</dt>
+        <dd class="ml-4">
+          The publicly-accessible website at aedin.io, including all entity, claim, source, region, and
+          interaction pages, the atlas and crop-web visualizations, and the unauthenticated Free API tier
+          (limited to 100 requests per IP address per day).
+        </dd>
+      </div>
+      <div>
+        <dt class="font-semibold text-nature-900">API</dt>
+        <dd class="ml-4">
+          The programmatic interface served from <code>api.aedin.io</code>, including the Free, Developer,
+          Team, and Institutional tiers.
+        </dd>
+      </div>
+      <div>
+        <dt class="font-semibold text-nature-900">API Key</dt>
+        <dd class="ml-4">
+          An authentication credential issued to a Subscriber upon successful payment, used to authorize API requests.
+        </dd>
+      </div>
+      <div>
+        <dt class="font-semibold text-nature-900">Subscriber</dt>
+        <dd class="ml-4">
+          A person or entity who has signed up for and paid for a Developer, Team, or Institutional tier.
+        </dd>
+      </div>
+      <div>
+        <dt class="font-semibold text-nature-900">Records</dt>
+        <dd class="ml-4">
+          Any data returned by the API, including without limitation entity records, interaction claims,
+          trait claims, source metadata, region metadata, GloBI-tier interactions, and the
+          <code>source_attribution</code> objects attached to each.
+        </dd>
+      </div>
+    </dl>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">3. The Free Surface</h2>
+    <p class="text-sm text-earth-700">
+      You may browse, search, link to, and read the Free Surface without payment or account creation. We may
+      impose IP-based rate limits on the unauthenticated Free API tier to protect service availability.
+    </p>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">4. Accounts</h2>
+    <p class="text-sm text-earth-700">
+      To subscribe to a paid tier, you must (a) provide a valid email address, (b) complete payment through
+      our payment processor (Stripe), and (c) agree to these Terms. You are responsible for maintaining the
+      confidentiality of your API Key(s) and for all activity that occurs under your account.
+    </p>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">5. License to access Records</h2>
+    <p class="text-sm text-earth-700">
+      Subject to your compliance with these Terms and payment of all applicable fees, AEDIN grants you a
+      non-exclusive, non-transferable, revocable license to query the API and to use Records in your
+      applications, products, and research, including for commercial purposes.
+    </p>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">6. Attribution obligations</h2>
+    <p class="text-sm text-earth-700">
+      Records returned by the API are AEDIN-curated metadata layered over data sourced from third-party
+      upstream providers (including but not limited to GloBI, GBIF, Wikidata, Trefle, USDA GRIN, Open-Meteo,
+      and SoilGrids) and the open-access scientific literature. Each Record includes a
+      <code>source_attribution</code> field describing its provenance.
+    </p>
+    <ol class="text-sm text-earth-700 list-decimal pl-5 space-y-1 mt-2">
+      <li>
+        You agree to preserve and surface the <code>source_attribution</code> object substantially as
+        returned by the API when redistributing any Record to a third party, including but not limited to:
+        rendering in a downstream user interface, including in a corpus for machine-learning training or
+        evaluation, or re-publishing in any form.
+      </li>
+      <li>
+        You agree to honor the attribution and license requirements of each named upstream source. The
+        current catalogue of upstream sources and their citation guidance is published at
+        <a href="/data-sources" class="text-nature-700 hover:underline">aedin.io/data-sources</a>
+        and is incorporated by reference into these Terms.
+      </li>
+      <li>
+        When citing AEDIN in academic work, please use the canonical citation published at
+        <a href="/about" class="text-nature-700 hover:underline">aedin.io/about</a>.
+      </li>
+    </ol>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">7. Restrictions</h2>
+    <p class="text-sm text-earth-700">You will not, and will not permit others to:</p>
+    <ul class="text-sm text-earth-700 list-disc pl-5 space-y-1 mt-2">
+      <li>Bulk-download or scrape the Free Surface or unauthenticated Free API tier to circumvent paid tier limits.</li>
+      <li>Resell or sublicense raw Record access as a standalone service substantially similar to AEDIN's API without prior written agreement.</li>
+      <li>Misrepresent AEDIN-derived Records as your own original research without appropriate attribution.</li>
+      <li>Use the API in a manner that materially degrades availability for other Subscribers, including denial-of-service attacks, deliberate sustained over-quota requests, or use as an open proxy.</li>
+      <li>Use the Service to create derivative datasets that strip the <code>source_attribution</code> field before redistribution.</li>
+      <li>Use the Service in violation of applicable law, including without limitation export control, sanctions, or copyright law.</li>
+    </ul>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">8. Payment, renewal, and cancellation</h2>
+    <p class="text-sm text-earth-700">
+      Paid tiers are billed in advance through Stripe, monthly or annually depending on the tier selected.
+      Subscriptions renew automatically until canceled. You may cancel at any time through the customer
+      portal; cancellation takes effect at the end of the then-current billing period. Fees paid are
+      non-refundable except where required by law.
+    </p>
+    <p class="text-sm text-earth-700 mt-2">
+      AEDIN may change the pricing of any tier with at least 30 days' notice. Existing annual subscriptions
+      remain at the price in effect at the start of the billing period for the duration of that period.
+    </p>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">9. Termination</h2>
+    <p class="text-sm text-earth-700">
+      You may terminate your account at any time. AEDIN may suspend or terminate your account for material
+      breach of these Terms, including without limitation breach of §6 (Attribution) or §7 (Restrictions).
+      For non-material breach, AEDIN will provide a reasonable opportunity to cure before suspension.
+    </p>
+    <p class="text-sm text-earth-700 mt-2">Sections 6, 7, 11, 12, 13, and 14 survive termination.</p>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">10. Service availability</h2>
+    <p class="text-sm text-earth-700">
+      AEDIN operates the Service on a commercially reasonable best-efforts basis. We do not guarantee
+      uninterrupted availability for the Free Surface or Developer / Team tiers. The Institutional tier may
+      include a separately-negotiated Service Level Agreement; in the absence of an executed SLA, these Terms
+      describe the full extent of our availability commitments.
+    </p>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">11. Warranty disclaimer</h2>
+    <p class="text-sm text-earth-700 uppercase">
+      The Service and all Records are provided "as is" and "as available," without warranty of any kind,
+      express or implied, including without limitation warranties of merchantability, fitness for a
+      particular purpose, non-infringement, or accuracy. Without limiting the foregoing, AEDIN does not
+      warrant that individual Records are accurate, complete, or suitable for any particular application.
+      Records are intended as references to primary sources; you are responsible for verifying Records
+      against their cited primary sources before making decisions that depend on their accuracy.
+    </p>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">12. Limitation of liability</h2>
+    <p class="text-sm text-earth-700 uppercase">
+      To the maximum extent permitted by applicable law, AEDIN's total liability arising out of or relating
+      to these Terms or your use of the Service will not exceed the amounts you paid to AEDIN in the twelve
+      (12) months preceding the event giving rise to liability. In no event will AEDIN be liable for any
+      indirect, incidental, consequential, special, or punitive damages.
+    </p>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">13. Indemnification</h2>
+    <p class="text-sm text-earth-700">
+      You agree to indemnify, defend, and hold harmless AEDIN from and against any third-party claims,
+      damages, liabilities, costs, and expenses (including reasonable attorneys' fees) arising out of or
+      relating to: (a) your use of the Service in violation of these Terms, (b) your breach of §6
+      (Attribution) or §7 (Restrictions), or (c) your applications or products that incorporate Records.
+    </p>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">14. Governing law and disputes</h2>
+    <p class="text-sm text-earth-700">
+      These Terms are governed by the laws of the Territory of Guam, United States, without regard to its
+      conflict-of-laws principles. Any dispute arising out of or relating to these Terms will be resolved
+      exclusively in the courts of Guam, and you consent to the personal jurisdiction of those courts.
+    </p>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">15. Changes to these terms</h2>
+    <p class="text-sm text-earth-700">
+      AEDIN may update these Terms from time to time. Material changes will be announced via email to
+      active Subscribers at least 30 days before taking effect. Continued use of the Service after the
+      effective date of an update constitutes acceptance of the updated Terms.
+    </p>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">16. Contact</h2>
+    <p class="text-sm text-earth-700">
+      Questions about these Terms may be directed to
+      <a href="mailto:contact@aedin.io" class="text-nature-700 hover:underline">contact@aedin.io</a>.
+    </p>
+  </article>
+</Layout>

@@ -1,0 +1,281 @@
+---
+import type { InteractionRow, TraitRow, ClaimModSummary } from '../lib/queries-d1';
+import { composeClaimSentence } from '../lib/claim-sentence';
+import { siblingGroupKey, siblingMembersByGroup, isListShapedQuote } from '../lib/sibling-list';
+const { interactions, traits, mods } = Astro.props as {
+  interactions: InteractionRow[]; traits: TraitRow[]; mods: ClaimModSummary;
+};
+// Precompute display fields once (O(n)) so the inline script renders strings, not logic.
+const _litRows = interactions.filter(r => r.provenance === 'literature');
+const _membersByGroup = siblingMembersByGroup(_litRows);
+const enrichedInteractions: any[] = interactions.map(r => {
+  if (r.provenance !== 'literature') return r;
+  const selfKey = (r.partnerSlug || r.partnerCommon || r.partnerName || '').toLowerCase();
+  const others = (_membersByGroup.get(siblingGroupKey(r)) || []).filter(m => (m.slug || m.name || '').toLowerCase() !== selfKey);
+  return { ...r, headline: composeClaimSentence(r.category, r.subjectCommon || r.subjectName, r.objectCommon || r.objectName), others, listShaped: isListShapedQuote(r.sourceQuote) };
+});
+// Guard against a source quote containing "</script>" breaking the embed.
+const data = JSON.stringify({ interactions: enrichedInteractions, traits, mods }).replace(/<\//g, '<\\/');
+const categories = [...new Set(interactions.map(i => i.category).filter(Boolean))].sort();
+---
+<section class="mb-10" data-pagefind-ignore>
+  {mods.total > 0 && (
+    <details class="mb-3 text-xs bg-amber-50 border border-amber-200 rounded p-3">
+      <summary class="cursor-pointer text-amber-900">
+        <strong>{mods.total}</strong> of this entity's claims have been modified{mods.removed > 0 ? <> · <strong>{mods.removed}</strong> removed</> : null}
+      </summary>
+      <ul class="mt-2 space-y-1">
+        {mods.items.map(m => (
+          <li class="font-mono text-amber-900/90">
+            {m.served ? '' : '⌫ '}claim #{m.claimId} {m.subjectName} ⇄ {m.objectName} — {m.field}: {m.before ?? '∅'} → {m.after ?? '∅'} <span class="text-amber-700/70">({m.method}{m.appliedAt ? ` · ${m.appliedAt.slice(0,10)}` : ''})</span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  )}
+
+  <div class="flex items-center gap-1 border-b border-nature-700/15 mb-3">
+    <button data-tab="interactions" class="ect-tab px-3 py-2 border-b-2 border-nature-700 text-nature-900 font-medium">Interactions <span class="text-earth-700">({interactions.length})</span></button>
+    <button data-tab="traits" class="ect-tab px-3 py-2 border-b-2 border-transparent text-earth-700">Traits <span>({traits.length})</span></button>
+  </div>
+
+  <!-- Interactions panel -->
+  <div data-panel="interactions">
+    <div class="flex flex-wrap items-center gap-2 mb-2 text-xs">
+      <input id="ect-search" type="search" placeholder="Search partner / interaction…" class="border border-nature-700/20 rounded px-2 py-1 w-56" />
+      <span class="text-earth-700">Source:</span>
+      <button class="ect-prov px-2 py-0.5 border rounded" data-prov="both" aria-pressed="true">Both</button>
+      <button class="ect-prov px-2 py-0.5 border rounded" data-prov="literature" aria-pressed="false">Literature</button>
+      <button class="ect-prov px-2 py-0.5 border rounded" data-prov="globi" aria-pressed="false">GloBI</button>
+      <select id="ect-category" class="border border-nature-700/20 rounded px-2 py-1">
+        <option value="">All categories</option>
+        {categories.map(c => <option value={c}>{c}</option>)}
+      </select>
+      <select id="ect-direction" class="border border-nature-700/20 rounded px-2 py-1" aria-label="Filter by direction">
+        <option value="">Any direction</option>
+        <option value="out">→ this acts on</option>
+        <option value="in">← acted on by</option>
+      </select>
+      <label class="flex items-center gap-1"><input id="ect-modified" type="checkbox" class="h-3 w-3" /> Modified only</label>
+      <span id="ect-count" class="text-earth-700 ml-auto"></span>
+    </div>
+    <div class="bg-white border border-nature-700/15 rounded overflow-x-auto">
+      <table class="w-full text-xs">
+        <thead class="bg-nature-50 text-earth-700 uppercase text-[10px] tracking-wide">
+          <tr>
+            <th class="ect-sort text-left px-2 py-1.5 cursor-pointer" data-key="category" tabindex="0" role="button" aria-label="Sort by interaction">Interaction</th>
+            <th class="text-left px-2 py-1.5 w-6"></th>
+            <th class="ect-sort text-left px-2 py-1.5 cursor-pointer" data-key="partnerName" tabindex="0" role="button" aria-label="Sort by partner">Partner</th>
+            <th class="text-left px-2 py-1.5">Source</th>
+            <th class="ect-sort text-left px-2 py-1.5 cursor-pointer" data-key="region" tabindex="0" role="button" aria-label="Sort by region">Region</th>
+            <th class="text-left px-2 py-1.5 w-6"></th>
+          </tr>
+        </thead>
+        <tbody id="ect-rows" class="divide-y divide-nature-700/10"></tbody>
+      </table>
+      <div id="ect-pager" class="flex items-center gap-2 px-3 py-2 text-[11px] text-earth-700 border-t border-nature-700/10"></div>
+    </div>
+  </div>
+
+  <!-- Traits panel -->
+  <div data-panel="traits" hidden>
+    <div class="flex items-center gap-2 mb-2 text-xs">
+      <input id="ect-trait-search" type="search" placeholder="Search trait…" class="border border-nature-700/20 rounded px-2 py-1 w-56" />
+    </div>
+    <div class="bg-white border border-nature-700/15 rounded overflow-x-auto">
+      <table class="w-full text-xs">
+        <thead class="bg-nature-50 text-earth-700 uppercase text-[10px] tracking-wide">
+          <tr><th class="text-left px-2 py-1.5">Trait</th><th class="text-left px-2 py-1.5">Value</th><th class="text-left px-2 py-1.5">Region</th><th class="text-left px-2 py-1.5">Source</th></tr>
+        </thead>
+        <tbody id="ect-trait-rows" class="divide-y divide-nature-700/10"></tbody>
+      </table>
+    </div>
+      <p class="text-[11px] text-earth-700 mt-1.5" data-show-if-inherited hidden>
+        ⤴ Inherited values are the parent species' defaults (inferred priors), not measured for this variety.
+      </p>
+  </div>
+
+  <script type="application/json" id="ect-data" set:html={data}></script>
+</section>
+
+<script is:inline>
+  (() => {
+    const el = document.getElementById('ect-data');
+    if (!el) return;
+    const { interactions, traits } = JSON.parse(el.textContent || '{}');
+    const PER = 50;
+    const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const state = { prov: 'both', category: '', dir: '', modified: false, q: '', sortKey: 'category', sortDir: 1, page: 0 };
+
+    // ── Tabs ──
+    document.querySelectorAll('.ect-tab').forEach(t => t.addEventListener('click', () => {
+      const name = t.getAttribute('data-tab');
+      document.querySelectorAll('.ect-tab').forEach(b => {
+        const on = b === t;
+        b.classList.toggle('border-nature-700', on); b.classList.toggle('text-nature-900', on); b.classList.toggle('font-medium', on);
+        b.classList.toggle('border-transparent', !on); b.classList.toggle('text-earth-700', !on);
+      });
+      document.querySelectorAll('[data-panel]').forEach(p => { p.hidden = p.getAttribute('data-panel') !== name; });
+    }));
+
+    // ── Interactions: filter + sort + paginate ──
+    const tbody = document.getElementById('ect-rows');
+    const pager = document.getElementById('ect-pager');
+    const countEl = document.getElementById('ect-count');
+
+    const filtered = () => {
+      const q = state.q.toLowerCase();
+      let rows = interactions.filter(r =>
+        (state.prov === 'both' || r.provenance === state.prov) &&
+        (!state.category || r.category === state.category) &&
+        (!state.dir || r.direction === state.dir) &&
+        (!state.modified || r.modified) &&
+        (!q || (r.partnerName || '').toLowerCase().includes(q) || (r.verb || '').toLowerCase().includes(q) || (r.category || '').toLowerCase().includes(q))
+      );
+      const k = state.sortKey;
+      rows.sort((a, b) => String(a[k] ?? '').localeCompare(String(b[k] ?? '')) * state.sortDir);
+      return rows;
+    };
+
+    // Number() coerces the integer PK so a non-numeric id can't break out of the href attribute.
+    const claimUrl = (r) => r.provenance === 'literature' ? `/claim/${Number(r.id)}` : `/globi/${Number(r.id)}`;
+    const flagHref = (r) => {
+      const subject = `AEDIN claim flag: #${r.id}`;
+      const body = `Page: ${location.href}\nClaim #${r.id}: ${r.partnerName || '—'} (${r.category || ''} ${r.verb || ''})\n\nWhat's wrong:\n`;
+      return `mailto:corrections@aedin.io?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    };
+    const detailFooter = (r) => `<p class="mt-2 flex gap-4 text-[11px]">
+      <a class="text-nature-700 hover:underline" href="${claimUrl(r)}">View claim page →</a>
+      <a class="text-earth-700 hover:underline" href="${flagHref(r)}">⚑ Report an error</a>
+    </p>`;
+
+    const detailHtml = (r) => {
+      if (r.provenance === 'literature') {
+        const verdicts = (r.verdicts || '').split('\n').filter(Boolean).map(line => {
+          const [n, v] = line.split('|');
+          return `<span class="mr-2"><span class="font-mono">${esc(n)}</span> · ${esc(v)}</span>`;
+        }).join('');
+        const headline = r.headline;
+        const others = r.others || [];
+        const listTag = r.listShaped
+          ? ' <span class="text-[9px] px-1 rounded bg-earth-100 text-earth-700">from a list/table</span>' : '';
+        const othersHtml = others.length
+          ? `<p class="mt-1 text-earth-700">Same source also records this on: ${others.map(s => s.slug
+              ? `<a class="text-nature-700 hover:underline" href="/entity/${esc(s.slug)}">${esc(s.name)}</a>`
+              : esc(s.name)).join(', ')}</p>`
+          : '';
+        return `<div class="px-8 py-2 bg-nature-50/40 text-[11px]">
+          <p class="font-medium text-nature-900">${esc(headline)}</p>
+          ${r.sourceQuote ? `<p class="mt-1 mb-0.5 text-[9px] uppercase tracking-wide text-earth-600">Source evidence${listTag}</p><p class="italic text-earth-800">&ldquo;${esc(r.sourceQuote)}&rdquo;</p>` : ''}
+          ${othersHtml}
+          ${r.citation ? `<p class="mt-1 text-earth-700">${esc(r.citation)}${r.sourceSlug ? ` · <a class="text-nature-700 hover:underline" href="/source/${esc(r.sourceSlug)}">source</a>` : ''}</p>` : ''}
+          ${verdicts ? `<p class="mt-1 text-earth-700">${verdicts}</p>` : ''}
+          ${detailFooter(r)}
+        </div>`;
+      }
+      // GloBI: reference_citation is the aggregated study; reference_doi links out.
+      const doi = /^10\./.test(r.referenceDoi || '') ? r.referenceDoi : null;
+      return `<div class="px-8 py-2 bg-nature-50/40 text-[11px] text-earth-700">
+        <p>${r.referenceCitation ? esc(r.referenceCitation) : 'Aggregated via GloBI.'}</p>
+        ${doi ? `<p class="mt-1"><a class="text-nature-700 hover:underline" href="https://doi.org/${esc(doi)}" rel="nofollow noopener" target="_blank">https://doi.org/${esc(doi)} ↗</a></p>` : ''}
+        ${detailFooter(r)}
+      </div>`;
+    };
+
+    const rowHtml = (r, i) => {
+      const arrow = r.direction === 'out' ? '→' : '←';
+      const partner = r.partnerSlug
+        ? `<a class="text-nature-700 hover:underline" href="/entity/${esc(r.partnerSlug)}">${esc(r.partnerName || '—')}</a>`
+        : esc(r.partnerName || '—');
+      const badge = r.provenance === 'globi'
+        ? '<span class="text-[9px] px-1 rounded bg-earth-100 text-earth-700">GLOBI</span>'
+        : '<span class="text-[9px] px-1 rounded bg-nature-100 text-nature-800">LIT</span>';
+      const sourceText = r.provenance === 'globi'
+        ? esc(r.referenceCitation || 'aggregated via GloBI')
+        : esc(r.citation || '');
+      return `<tr class="ect-row hover:bg-nature-50/50 cursor-pointer" data-i="${i}">
+        <td class="px-2 py-1.5"><span class="font-mono">${esc(r.category || '—')}</span> <span class="text-earth-600">${esc(r.verb || '')}</span>${r.resistanceLevel ? ` <span class="inline-block px-1.5 rounded text-[9px] uppercase tracking-wide font-semibold bg-nature-50 text-nature-900 border border-nature-700/30" title="resistance level">${esc(r.resistanceLevel)}</span>` : ''}</td>
+        <td class="px-2 py-1.5 text-earth-500">${arrow}</td>
+        <td class="px-2 py-1.5">${partner}</td>
+        <td class="px-2 py-1.5"><span class="whitespace-nowrap">${badge}</span> <span class="text-earth-700">${sourceText}</span></td>
+        <td class="px-2 py-1.5 text-earth-700">${esc(r.region || '')}</td>
+        <td class="px-2 py-1.5">${r.modified ? '<span title="modified" class="text-amber-600">⟳</span>' : ''}</td>
+      </tr>`;
+    };
+
+    const render = () => {
+      const rows = filtered();
+      const pages = Math.max(1, Math.ceil(rows.length / PER));
+      if (state.page >= pages) state.page = pages - 1;
+      const slice = rows.slice(state.page * PER, state.page * PER + PER);
+      tbody.innerHTML = slice.map((r, n) => rowHtml(r, state.page * PER + n)).join('') || '<tr><td colspan="6" class="px-2 py-4 text-earth-600 italic">No matching interactions.</td></tr>';
+      countEl.textContent = `${rows.length} interaction${rows.length === 1 ? '' : 's'}`;
+      pager.innerHTML = `<button id="ect-prev" class="px-2 py-0.5 border rounded ${state.page === 0 ? 'opacity-40' : ''}">‹ Prev</button>
+        <span>Page ${state.page + 1} / ${pages}</span>
+        <button id="ect-next" class="px-2 py-0.5 border rounded ${state.page >= pages - 1 ? 'opacity-40' : ''}">Next ›</button>`;
+      document.getElementById('ect-prev').onclick = () => { if (state.page > 0) { state.page--; render(); } };
+      document.getElementById('ect-next').onclick = () => { if (state.page < pages - 1) { state.page++; render(); } };
+      // Store the FULL filtered+sorted array (not the page slice) — row-expand
+      // looks up by the global filtered index baked into each row's data-i.
+      tbody._slice = rows;
+    };
+
+    // Row expand (event delegation)
+    tbody.addEventListener('click', (e) => {
+      const tr = e.target.closest('.ect-row');
+      if (!tr) return;
+      const next = tr.nextElementSibling;
+      if (next && next.classList.contains('ect-detail')) { next.remove(); return; }
+      const i = Number(tr.getAttribute('data-i'));
+      const r = (tbody._slice || interactions)[i] || interactions[i];
+      const det = document.createElement('tr');
+      det.className = 'ect-detail';
+      det.innerHTML = `<td colspan="6">${detailHtml(r)}</td>`;
+      tr.after(det);
+    });
+
+    document.getElementById('ect-search').addEventListener('input', e => { state.q = e.target.value; state.page = 0; render(); });
+    document.getElementById('ect-category').addEventListener('change', e => { state.category = e.target.value; state.page = 0; render(); });
+    document.getElementById('ect-direction').addEventListener('change', e => { state.dir = e.target.value; state.page = 0; render(); });
+    document.getElementById('ect-modified').addEventListener('change', e => { state.modified = e.target.checked; state.page = 0; render(); });
+    document.querySelectorAll('.ect-prov').forEach(b => b.addEventListener('click', () => {
+      state.prov = b.getAttribute('data-prov'); state.page = 0;
+      document.querySelectorAll('.ect-prov').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+      render();
+    }));
+    document.querySelectorAll('.ect-sort').forEach(th => {
+      const sort = () => {
+        const k = th.getAttribute('data-key');
+        if (state.sortKey === k) state.sortDir *= -1; else { state.sortKey = k; state.sortDir = 1; }
+        render();
+      };
+      th.addEventListener('click', sort);
+      th.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sort(); } });
+    });
+
+    // ── Traits: simple search ──
+    const tBody = document.getElementById('ect-trait-rows');
+    const traitRow = (t) => `<tr class="hover:bg-nature-50/50${t.inheritedFromEntityId ? ' opacity-80' : ''}">
+      <td class="px-2 py-1.5 font-medium text-nature-900">${esc(t.trait)}</td>
+      <td class="px-2 py-1.5">${esc(t.value)}${t.unit ? ` <span class="text-earth-600">${esc(t.unit)}</span>` : ''}${
+        t.inheritedFromEntityId
+          ? ` <a class="ml-1 inline-flex items-center gap-0.5 rounded bg-earth-50 text-earth-700 text-[10px] px-1 py-0.5 align-middle hover:underline" href="/entity/${esc(t.inheritedFromSlug || '')}" title="Inherited from the parent species — an inferred prior, not measured for this variety">⤴ inherited · <span class="italic">${esc(t.inheritedFromName || 'parent')}</span></a>`
+          : ''
+      }</td>
+      <td class="px-2 py-1.5 text-earth-700">${esc(t.region || '')}</td>
+      <td class="px-2 py-1.5 text-earth-700">${esc(t.citation || '')}${t.sourceSlug ? ` · <a class="text-nature-700 hover:underline" href="/source/${esc(t.sourceSlug)}">source</a>` : ''}</td>
+    </tr>`;
+    const renderTraits = (q = '') => {
+      const ql = q.toLowerCase();
+      const rows = traits.filter(t => !ql || t.trait.toLowerCase().includes(ql) || String(t.value).toLowerCase().includes(ql));
+      tBody.innerHTML = rows.map(traitRow).join('') || '<tr><td colspan="4" class="px-2 py-4 text-earth-600 italic">No traits.</td></tr>';
+    };
+    document.getElementById('ect-trait-search').addEventListener('input', e => renderTraits(e.target.value));
+
+    render();
+    renderTraits();
+    if (traits.some(t => t.inheritedFromEntityId)) {
+      document.querySelector('[data-show-if-inherited]')?.removeAttribute('hidden');
+    }
+  })();
+</script>

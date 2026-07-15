@@ -1,0 +1,115 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { USE_CASES } from '../lib/waitlist';
+// Public Turnstile site key (build-time, safe to expose). When unset, the
+// waitlist form renders without the widget and the endpoint relies on the
+// honeypot only — see web/src/lib/waitlist.ts::verifyTurnstile.
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITEKEY;
+---
+
+<Layout
+  title="API"
+  description="A programmatic API over the AEDIN agroecological knowledge graph — versioned JSON for academic researchers and AI consumers. In development; request early access."
+>
+  <article class="max-w-3xl mx-auto px-6 py-10">
+    <h1 class="text-3xl font-semibold text-nature-900">AEDIN API</h1>
+
+    <p class="text-base text-nature-900 mt-4">
+      A programmatic API over the AEDIN knowledge graph — versioned JSON access to entities,
+      interactions, traits, and claims with full source provenance — is in development, built for
+      academic researchers and AI / bot consumers.
+    </p>
+    <p class="text-sm text-earth-700 mt-3">
+      It exposes the same verified, citation-grounded data you can browse on this site, over a clean,
+      rate-limited REST interface: look up an entity and its interactions, fetch a claim with its
+      verbatim source quote and citation, browse by region or GloBI interaction term, and search
+      across the corpus.
+    </p>
+
+    <section id="api-waitlist" class="mt-8 scroll-mt-20 rounded-lg border border-nature-700/30 bg-nature-50/60 px-5 py-5">
+      <h2 class="text-lg font-semibold text-nature-900 mb-1">Request early access</h2>
+      <p class="text-sm text-earth-700">
+        Leave your email to get an early developer key when the API opens. No spam; we'll only email
+        you about API availability.
+      </p>
+      <form id="waitlist-form" class="mt-4 flex flex-col gap-3 sm:max-w-md" novalidate>
+        <input type="hidden" name="interest" value="api" />
+        <input type="hidden" name="source" value="api" />
+        <!-- honeypot: hidden from real users; bots that fill it are silently dropped -->
+        <input type="text" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" class="hidden" />
+        <label for="wl-email" class="sr-only">Email address</label>
+        <input
+          id="wl-email"
+          type="email"
+          name="email"
+          required
+          autocomplete="email"
+          placeholder="you@university.edu"
+          class="rounded border border-nature-700/30 px-3 py-2 text-sm text-nature-900 bg-white focus:outline-none focus:ring-2 focus:ring-nature-700/40"
+        />
+        <fieldset class="mt-1">
+          <legend class="text-sm text-earth-700 mb-1.5">
+            What do you plan to use the API for? <span class="text-earth-700/60">(optional)</span>
+          </legend>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+            {USE_CASES.map((u) => (
+              <label class="flex items-center gap-2 text-sm text-nature-900">
+                <input
+                  type="checkbox"
+                  name="use_cases"
+                  value={u.value}
+                  class="rounded border-nature-700/40 text-nature-700 focus:ring-nature-700/40"
+                />
+                {u.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        {turnstileSiteKey && <div class="cf-turnstile" data-sitekey={turnstileSiteKey}></div>}
+        <button
+          type="submit"
+          class="self-start rounded-full border border-nature-700/40 px-4 py-1.5 text-sm text-nature-700 hover:bg-nature-50 hover:border-nature-700/70 transition-colors"
+        >
+          Request early access
+        </button>
+        <p id="wl-msg" class="text-sm" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+  </article>
+
+  {turnstileSiteKey && (
+    <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  )}
+  <script is:inline>
+    (function () {
+      var f = document.getElementById('waitlist-form');
+      if (!f) return;
+      var msg = document.getElementById('wl-msg');
+      var btn = f.querySelector('button[type="submit"]');
+      f.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        btn.disabled = true;
+        msg.className = 'text-sm text-earth-700';
+        msg.textContent = 'Submitting…';
+        try {
+          var res = await fetch('/api/waitlist', { method: 'POST', body: new FormData(f) });
+          var data = await res.json().catch(function () { return {}; });
+          if (res.ok && data.ok) {
+            f.reset();
+            msg.className = 'text-sm text-nature-700';
+            msg.textContent = "Thanks — you're on the list. We'll email your developer key when the API opens.";
+          } else {
+            msg.className = 'text-sm text-red-600';
+            msg.textContent = (data && data.error) || 'Something went wrong. Please try again.';
+            btn.disabled = false;
+            if (window.turnstile) window.turnstile.reset();
+          }
+        } catch (err) {
+          msg.className = 'text-sm text-red-600';
+          msg.textContent = 'Network error. Please try again.';
+          btn.disabled = false;
+        }
+      });
+    })();
+  </script>
+</Layout>

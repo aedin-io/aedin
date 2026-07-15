@@ -1,0 +1,501 @@
+---
+import Layout from '../layouts/Layout.astro';
+import CropGraphCyto from '../components/CropGraphCyto.astro';
+
+// Crop-tier sub-group display order (matches AGRONOMIC_PRIMARY priority).
+const CROP_SUBGROUPS = [
+  { key: 'vegetable',  label: 'Vegetables' },
+  { key: 'fruit',      label: 'Fruits' },
+  { key: 'cereal',     label: 'Cereals' },
+  { key: 'legume',     label: 'Legumes' },
+  { key: 'oilseed',    label: 'Oilseeds' },
+  { key: 'root_tuber', label: 'Roots & tubers' },
+  { key: 'nut',        label: 'Nuts' },
+  { key: 'spice',      label: 'Spices & herbs' },
+  { key: 'beverage',   label: 'Beverage crops' },
+  { key: 'sugar',      label: 'Sugar crops' },
+  { key: 'fiber',      label: 'Fiber crops' },
+  { key: 'forage',     label: 'Forage' },
+  { key: 'cover_crop', label: 'Cover crops' },
+  { key: 'food',       label: 'Other crop' },
+];
+---
+<Layout
+  title="Crop web — 4-level interaction explorer"
+  description="Pick a crop and see four levels of ecological interactions radiating outward: direct interactors (L1), their interactors (L2), and so on through L4. Inspired by tritrophic-interaction theory."
+>
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Dataset",
+    "name": "AEDIN crop interaction web",
+    "description": "Crop-centric 4-level radial sunburst showing direct, second-, third-, and fourth-order interactions for each plant in the agroecological knowledge base.",
+    "url": "https://aedin.io/crop-web",
+    "creator": { "@type": "Organization", "name": "AEDIN contributors" },
+    "isAccessibleForFree": true
+  })} />
+
+  <div class="max-w-[1600px] mx-auto px-4 py-6">
+    <header class="mb-4 pb-4 border-b border-nature-700/15">
+      <p class="text-xs uppercase tracking-wide text-earth-700 mb-1">Browse</p>
+      <h1 class="text-2xl font-semibold text-nature-900 mb-1">Crop web</h1>
+      <p class="text-sm text-earth-700 max-w-3xl">
+        Pick a plant on the left to see its interaction <strong>X</strong>: the crop sits at
+        the centre, with pathogens &amp; their antagonists to the lower-left, pests &amp; their
+        predators to the lower-right, mutualists &amp; pollinators above, and companion plants
+        &amp; weeds along the centre column (see the key, bottom-right). Hover to read a name,
+        click to pin a selection, double-click to open the entity page. Other layouts
+        (Rings, Force, …) are top-right.
+      </p>
+    </header>
+
+    <div class="xl:grid xl:grid-cols-[300px_1fr_300px] xl:gap-4">
+      <!-- Left rail: 4 tier sections -->
+      <aside class="space-y-3 text-sm">
+        <details open class="bg-white border border-nature-700/15 rounded">
+          <summary class="px-3 py-2 cursor-pointer font-medium text-nature-900 flex items-baseline justify-between">
+            <span>Region filter</span>
+            <span class="text-[10px] text-earth-700 font-normal" id="cw-region-summary">— any —</span>
+          </summary>
+          <div class="px-2 pb-2 space-y-2">
+            <select id="cw-region" class="w-full bg-white border border-nature-700/30 rounded px-2 py-1 text-xs">
+              <option value="">— any region —</option>
+              <optgroup label="Regions" id="cw-region-scopes"></optgroup>
+              <optgroup label="Countries" id="cw-region-countries"></optgroup>
+            </select>
+            <select id="cw-sub" class="w-full bg-white border border-nature-700/30 rounded px-2 py-1 text-xs mt-1" hidden>
+              <option value="">— any —</option>
+            </select>
+            <button id="cw-region-clear" class="w-full text-[11px] text-nature-700 hover:underline pt-1">Clear region</button>
+            <p class="text-[10px] text-earth-700 px-1 leading-snug">
+              Narrows the graph to interactions reported in this region.
+              Biogeographically distinct localities (Hawaii, Guam, …) are listed as their own countries, not under their political parent.
+            </p>
+          </div>
+        </details>
+
+        <div class="bg-white border border-nature-700/15 rounded px-2 py-2">
+          <input
+            id="plant-search"
+            type="search"
+            placeholder="Filter by name…"
+            class="w-full px-2 py-1 text-xs border border-nature-700/20 rounded focus:outline-none focus:border-nature-700/50"
+          />
+        </div>
+
+        <details open class="bg-white border border-nature-700/15 rounded">
+          <summary class="px-3 py-2 cursor-pointer font-medium text-nature-900">Source</summary>
+          <div class="px-2 pb-2 space-y-2">
+            <div class="inline-flex w-full text-[11px] border border-nature-700/20 rounded overflow-hidden" role="group" aria-label="Source">
+              <button class="cw-source flex-1 px-2 py-1 bg-nature-700 text-white font-medium" data-source="literature" aria-pressed="true">Literature</button>
+              <button class="cw-source flex-1 px-2 py-1 text-nature-700 hover:bg-nature-50" data-source="globi" aria-pressed="false">GloBI</button>
+              <button class="cw-source flex-1 px-2 py-1 text-nature-700 hover:bg-nature-50" data-source="both" aria-pressed="false">Both</button>
+            </div>
+            <p id="cw-globi-note" class="hidden text-[10px] text-earth-700 leading-snug px-1"></p>
+            <div id="cw-category-filter" class="hidden">
+              <label class="text-[10px] uppercase tracking-wide text-earth-700 block px-1 mb-0.5">Interaction</label>
+              <ul id="cw-category-list" class="space-y-px text-xs px-1"></ul>
+            </div>
+            <p class="text-[10px] text-earth-700 px-1 leading-snug">
+              GloBI edges are aggregated and dashed — <span class="italic">not independently verified</span>.
+              Region filter applies to literature edges only.
+            </p>
+          </div>
+        </details>
+
+        <details open class="bg-white border border-nature-700/15 rounded">
+          <summary class="px-3 py-2 cursor-pointer font-medium text-nature-900 flex items-baseline justify-between">
+            <span>Crops <span class="text-[10px] text-earth-700 font-normal" id="count-crop">(…)</span></span>
+            <span class="text-[10px] text-earth-700">priority 1</span>
+          </summary>
+          <div class="px-2 pb-2 space-y-2" id="rail-crop-subgroups">
+            {CROP_SUBGROUPS.map(g => (
+              <div data-subgroup={g.key} class="rail-subgroup hidden">
+                <h3 class="text-[10px] uppercase tracking-wide text-earth-700 px-1 mb-0.5">{g.label} <span class="text-earth-700/60" data-count></span></h3>
+                <ul class="space-y-px text-xs" data-list></ul>
+              </div>
+            ))}
+          </div>
+        </details>
+
+        <details class="bg-white border border-nature-700/15 rounded">
+          <summary class="px-3 py-2 cursor-pointer font-medium text-nature-900 flex items-baseline justify-between">
+            <span>Ornamentals <span class="text-[10px] text-earth-700 font-normal" id="count-ornamental">(…)</span></span>
+            <span class="text-[10px] text-earth-700">priority 2</span>
+          </summary>
+          <ul class="px-2 pb-2 space-y-px text-xs" id="rail-ornamental"></ul>
+        </details>
+
+        <details class="bg-white border border-nature-700/15 rounded">
+          <summary class="px-3 py-2 cursor-pointer font-medium text-nature-900 flex items-baseline justify-between">
+            <span>Medicinals <span class="text-[10px] text-earth-700 font-normal" id="count-medicinal">(…)</span></span>
+            <span class="text-[10px] text-earth-700">priority 3</span>
+          </summary>
+          <ul class="px-2 pb-2 space-y-px text-xs" id="rail-medicinal"></ul>
+        </details>
+
+        <details class="bg-white border border-nature-700/15 rounded">
+          <summary class="px-3 py-2 cursor-pointer font-medium text-nature-900 flex items-baseline justify-between">
+            <span>Wild plants &amp; weeds <span class="text-[10px] text-earth-700 font-normal" id="count-wild">(…)</span></span>
+            <span class="text-[10px] text-earth-700">priority 4</span>
+          </summary>
+          <ul class="px-2 pb-2 space-y-px text-xs" id="rail-wild"></ul>
+        </details>
+      </aside>
+
+      <!-- Main: sunburst -->
+      <main class="space-y-3 mt-3 xl:mt-0">
+        <div class="bg-white border border-nature-700/15 rounded-md h-[560px] xl:h-[640px] overflow-hidden">
+          <CropGraphCyto />
+        </div>
+        <p class="text-[11px] text-earth-700">
+          Legend: <span class="inline-block w-2 h-2 rounded-full align-middle" style="background:var(--bucket-producer)"></span> producer ·
+          <span class="inline-block w-2 h-2 rounded-full align-middle" style="background:var(--bucket-herbivore)"></span> herbivore ·
+          <span class="inline-block w-2 h-2 rounded-full align-middle" style="background:var(--bucket-predator)"></span> predator ·
+          <span class="inline-block w-2 h-2 rounded-full align-middle" style="background:var(--bucket-parasitoid)"></span> parasitoid ·
+          <span class="inline-block w-2 h-2 rounded-full align-middle" style="background:var(--bucket-pathogen)"></span> pathogen ·
+          <span class="inline-block w-2 h-2 rounded-full align-middle" style="background:var(--bucket-mutualist)"></span> mutualist
+        </p>
+      </main>
+      <aside id="crop-graph-panel" class="hidden xl:block bg-white border border-nature-700/15 rounded-md mt-3 xl:mt-0 overflow-auto h-[560px] xl:h-[640px]"></aside>
+    </div>
+  </div>
+
+  <script is:inline>
+    (async () => {
+      let atlas = null;
+      let graphReady = false;
+      let pendingPick = null;
+      let lastCropId = null;
+      let source = 'literature';                 // 'literature' | 'globi' | 'both'
+      const hiddenCategories = new Set();         // interaction_category values hidden
+      const globiCache = new Map();               // slug -> { nodes, edges, categories, capped }
+      let entityById = null;                      // built after atlas loads
+
+      const getView = () => ({ source, globi: currentGlobi(), hiddenCategories: [...hiddenCategories] });
+      const currentGlobi = () => {
+        if (source === 'literature' || lastCropId == null) return null;
+        const e = entityById.get(lastCropId);
+        const slug = e && e.slug;
+        if (!slug) return null;
+        return globiCache.get(`${slug}|${regionKeyFor(getRegionFilter())}`) || null;
+      };
+
+      const getRegionFilter = () => {
+        const _regionSel = document.getElementById('cw-region');
+        const _opt = _regionSel.selectedOptions[0];
+        const _kind = _opt ? _opt.getAttribute('data-kind') : null;  // null on the "— any region —" placeholder → all-null filter = no constraint
+        const _val = _regionSel.value || null;
+        return {
+          scope: _kind === 'scope' ? _val : null,
+          country: _kind === 'country' ? _val : null,
+          subdivision: _kind === 'country' ? (document.getElementById('cw-sub').value || null) : null,
+        };
+      };
+
+      // ── Rail interaction-count badges (region + source reactive) ───────────
+      // matchesRegion + litCountsByEntity are a VERBATIM MIRROR of
+      // src/lib/region-counts.ts (this is:inline script can't import it; that module
+      // is the tested source of truth — keep these identical).
+      const matchesRegion = (e, f) =>
+        (!f.scope || (e.scopes && e.scopes.includes(f.scope))) &&
+        (!f.country || e.country === f.country) &&
+        (!f.subdivision || e.subdivision === f.subdivision);
+      const litCountsByEntity = (edges, f) => {
+        const m = new Map();
+        for (const e of edges) {
+          if (!matchesRegion(e, f)) continue;
+          m.set(e.subject_id, (m.get(e.subject_id) || 0) + 1);
+          if (e.object_id != null) m.set(e.object_id, (m.get(e.object_id) || 0) + 1);
+        }
+        return m;
+      };
+      const globiCountsCache = new Map();   // regionKey -> Map<id, n>
+      // scope-only (or no) filter -> '' (global): claim_localities has no scope vocab.
+      const regionKeyFor = (f) => f.country ? (f.subdivision ? `${f.country}|${f.subdivision}` : f.country) : (f.scope ? `scope:${f.scope}` : '');
+      const ensureGlobiCounts = async (key) => {
+        if (globiCountsCache.has(key)) return;
+        const params = new URLSearchParams();
+        if (key.startsWith('scope:')) { params.set('scope', key.slice(6)); }
+        else if (key) { const [country, sub] = key.split('|'); params.set('country', country); if (sub) params.set('subdivision', sub); }
+        try {
+          const r = await fetch(`/api/crop-globi-counts.json?${params}`);
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const data = await r.json();
+          const m = new Map();
+          for (const c of data.counts) m.set(c.id, c.n);
+          globiCountsCache.set(key, m);
+        } catch (err) {
+          console.warn('crop-globi-counts fetch failed:', err.message);
+          globiCountsCache.set(key, new Map());   // degrade: badges show literature only
+        }
+      };
+      const updateRailCounts = async () => {
+        const f = getRegionFilter();
+        const lit = (source !== 'globi') ? litCountsByEntity(atlas.edges, f) : new Map();
+        let globi = new Map();
+        if (source !== 'literature') {
+          const key = regionKeyFor(f);
+          await ensureGlobiCounts(key);
+          globi = globiCountsCache.get(key) || new Map();
+        }
+        document.querySelectorAll('[data-count-badge]').forEach(span => {
+          const id = parseInt(span.getAttribute('data-badge-id'), 10);
+          const n = (lit.get(id) || 0) + (globi.get(id) || 0);
+          span.textContent = String(n);
+          span.classList.toggle('opacity-40', n === 0);
+        });
+      };
+
+      document.addEventListener('crop-graph-ready', () => {
+        graphReady = true;
+        if (pendingPick != null) {
+          lastCropId = pendingPick;
+          pendingPick = null;
+          paint();
+        }
+      });
+
+      // Single render entry point. Fetches the crop's GloBI chain on demand
+      // (once per crop), then renders and rebuilds the category checkboxes.
+      const paint = async ({ rebuildCategories = true } = {}) => {
+        if (lastCropId == null || !graphReady) return;
+        const id = lastCropId;
+        if (source !== 'literature') await ensureGlobi(id);
+        if (id !== lastCropId) return;   // a newer crop was picked while we awaited the fetch
+        const summary = window.cropGraph.render(lastCropId, atlas, getRegionFilter(), getView());
+        if (rebuildCategories) buildCategoryList(summary);
+        updateGlobiNote();
+      };
+
+      const ensureGlobi = async (cropId) => {
+        const e = entityById.get(cropId);
+        const slug = e && e.slug;
+        if (!slug) return;
+        const regionKey = regionKeyFor(getRegionFilter());
+        const cacheKey = `${slug}|${regionKey}`;
+        if (globiCache.has(cacheKey)) return;
+        const params = new URLSearchParams();
+        if (regionKey.startsWith('scope:')) { params.set('scope', regionKey.slice(6)); }
+        else if (regionKey) { const [country, sub] = regionKey.split('|'); params.set('country', country); if (sub) params.set('subdivision', sub); }
+        const qs = params.toString();
+        try {
+          const r = await fetch(`/api/crop-web-globi/${encodeURIComponent(slug)}.json${qs ? `?${qs}` : ''}`);
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          globiCache.set(cacheKey, await r.json());
+        } catch (err) {
+          globiCache.set(cacheKey, { nodes: [], edges: [], categories: [], capped: { tier1_total: 0, tier1_shown: 0 }, error: err.message });
+        }
+      };
+
+      const renderGraph = (cropId) => {
+        lastCropId = cropId;
+        if (graphReady) paint();
+        else pendingPick = cropId;
+      };
+
+      const rerenderForRegion = () => {
+        updateRegionSummary();
+        updateRailCounts();
+        paint();
+      };
+
+      const buildCategoryList = (summary) => {
+        const wrap = document.getElementById('cw-category-filter');
+        const list = document.getElementById('cw-category-list');
+        const cats = (summary && summary.categories) || [];
+        if (!cats.length) { wrap.classList.add('hidden'); list.innerHTML = ''; return; }
+        wrap.classList.remove('hidden');
+        list.innerHTML = cats.map(c => `
+          <li>
+            <label class="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" class="cw-cat" data-cat="${escapeHtml(c.category)}" ${hiddenCategories.has(c.category) ? '' : 'checked'} />
+              <span class="font-mono text-[11px]">${escapeHtml(c.category)}</span>
+              <span class="text-earth-700 text-[10px]">${c.n}</span>
+            </label>
+          </li>`).join('');
+      };
+
+      const updateGlobiNote = () => {
+        const note = document.getElementById('cw-globi-note');
+        const g = currentGlobi();
+        if (source === 'literature' || !g) { note.classList.add('hidden'); return; }
+        if (g.error) { note.textContent = `GloBI fetch failed: ${g.error}`; note.classList.remove('hidden'); return; }
+        const extra = g.capped.tier1_total - g.capped.tier1_shown;
+        const e = entityById.get(lastCropId);
+        const slug = e && e.slug;
+        note.innerHTML = extra > 0 && slug
+          ? `Showing top ${g.capped.tier1_shown} of ${g.capped.tier1_total} GloBI interactors · <a class="text-nature-700 hover:underline" href="/entity/${slug}">+${extra} more on the entity page →</a>`
+          : `${g.edges.length} GloBI edges`;
+        note.classList.remove('hidden');
+      };
+
+      const updateRegionSummary = () => {
+        const f = getRegionFilter();
+        const label = f.subdivision || f.country || f.scope || '— any —';
+        document.getElementById('cw-region-summary').textContent = label;
+      };
+
+      try {
+        const r = await fetch('/data/atlas.json');
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        atlas = await r.json();
+      } catch (err) {
+        document.getElementById('crop-graph-status').textContent = `Failed to load atlas data: ${err.message}`;
+        return;
+      }
+
+      // Index plants by tier + crop sub-group
+      entityById = new Map(atlas.entities.map(e => [e.id, e]));
+      const plants = atlas.entities.filter(e => e.bio_category === 'plantae' && e.crop_tier);
+      const byTier = { crop: [], ornamental: [], medicinal: [], wild: [] };
+      for (const p of plants) {
+        if (byTier[p.crop_tier]) byTier[p.crop_tier].push(p);
+      }
+      const sortByCount = (a, b) => b.claim_count - a.claim_count;
+      for (const k of Object.keys(byTier)) byTier[k].sort(sortByCount);
+
+      // Pick primary sub-group for crop-tier plants: first AGRONOMIC_PRIMARY
+      // tag found in effective_uses, else 'food' as the catch-all bucket.
+      const AGRONOMIC_PRIMARY_ORDER = ['vegetable','fruit','cereal','legume','oilseed','root_tuber','nut','spice','beverage','sugar','fiber','forage','cover_crop'];
+      const primarySubgroup = (uses) => {
+        if (!uses || !uses.length) return 'food';
+        for (const t of AGRONOMIC_PRIMARY_ORDER) if (uses.includes(t)) return t;
+        if (uses.includes('food')) return 'food';
+        return 'food';
+      };
+
+      const cropSubBuckets = new Map();
+      for (const p of byTier.crop) {
+        const sg = primarySubgroup(p.effective_uses);
+        if (!cropSubBuckets.has(sg)) cropSubBuckets.set(sg, []);
+        cropSubBuckets.get(sg).push(p);
+      }
+
+      const liFor = (p) => {
+        const name = p.scientific_name;
+        const common = p.common_name ? ` · <span class="text-earth-700">${escapeHtml(p.common_name)}</span>` : '';
+        return `<li>
+          <button data-plant-id="${p.id}"
+            class="plant-pick w-full text-left px-1.5 py-0.5 rounded hover:bg-nature-50 text-nature-900 italic"
+            data-name="${escapeHtml(name.toLowerCase())}${p.common_name ? ' ' + escapeHtml(p.common_name.toLowerCase()) : ''}">
+            ${escapeHtml(name)}${common}
+            <span class="text-[10px] text-earth-700 not-italic ml-1" data-count-badge data-badge-id="${p.id}">${p.claim_count}</span>
+          </button>
+        </li>`;
+      };
+
+      function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+      }
+
+      // Populate Crop sub-groups
+      document.querySelectorAll('#rail-crop-subgroups .rail-subgroup').forEach(div => {
+        const key = div.getAttribute('data-subgroup');
+        const list = cropSubBuckets.get(key) || [];
+        if (!list.length) return; // leave hidden
+        div.classList.remove('hidden');
+        div.querySelector('[data-count]').textContent = `(${list.length})`;
+        div.querySelector('[data-list]').innerHTML = list.map(liFor).join('');
+      });
+
+      // Populate flat tiers
+      const fill = (id, list) => {
+        document.getElementById(id).innerHTML = list.map(liFor).join('');
+      };
+      fill('rail-ornamental', byTier.ornamental);
+      fill('rail-medicinal', byTier.medicinal);
+      fill('rail-wild', byTier.wild);
+
+      // Counts
+      document.getElementById('count-crop').textContent = `(${byTier.crop.length})`;
+      document.getElementById('count-ornamental').textContent = `(${byTier.ornamental.length})`;
+      document.getElementById('count-medicinal').textContent = `(${byTier.medicinal.length})`;
+      document.getElementById('count-wild').textContent = `(${byTier.wild.length})`;
+
+      updateRailCounts();   // replace the build-time claim_count placeholder with the live metric
+
+      // Click handler
+      document.body.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('.plant-pick');
+        if (!btn) return;
+        document.querySelectorAll('.plant-pick').forEach(b => {
+          b.classList.remove('bg-nature-100', 'font-medium');
+        });
+        btn.classList.add('bg-nature-100', 'font-medium');
+        renderGraph(parseInt(btn.getAttribute('data-plant-id'), 10));
+      });
+
+      // Search filter
+      document.getElementById('plant-search').addEventListener('input', (ev) => {
+        const q = ev.target.value.trim().toLowerCase();
+        document.querySelectorAll('.plant-pick').forEach(btn => {
+          const name = btn.getAttribute('data-name') || '';
+          btn.parentElement.style.display = (!q || name.includes(q)) ? '' : 'none';
+        });
+      });
+
+      // ─── Region filter ───────────────────────────────────────
+      // Populate a single grouped select from atlas.json: optgroup "Regions"
+      // lists canonical scopes, optgroup "Countries" lists countries.
+      // A dependent subdivision select appears when a country is chosen.
+      const regionSel = document.getElementById('cw-region');
+      const subSel = document.getElementById('cw-sub');
+      const scopeGroup = document.getElementById('cw-region-scopes');
+      const countryGroup = document.getElementById('cw-region-countries');
+      const scopes = atlas.scopes || [];
+      const countries = (atlas.countries || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+      scopeGroup.innerHTML = scopes.map(s =>
+        `<option value="${escapeHtml(s.name)}" data-kind="scope">${escapeHtml(s.name)} (${s.claim_count})</option>`).join('');
+      countryGroup.innerHTML = countries.map(c =>
+        `<option value="${escapeHtml(c.name)}" data-kind="country">${escapeHtml(c.name)} (${c.claim_count})</option>`).join('');
+
+      function refreshSubdivisions() {
+        const opt = regionSel.selectedOptions[0];
+        const isCountry = opt && opt.getAttribute('data-kind') === 'country';
+        const c = isCountry ? countries.find(x => x.name === regionSel.value) : null;
+        if (!c || !(c.subdivisions || []).length) { subSel.hidden = true; subSel.innerHTML = '<option value="">— any —</option>'; return; }
+        subSel.hidden = false;
+        subSel.innerHTML = '<option value="">— any —</option>'
+          + c.subdivisions.map(s => `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)} (${s.claim_count})</option>`).join('');
+      }
+
+      regionSel.addEventListener('change', () => { refreshSubdivisions(); rerenderForRegion(); });
+      subSel.addEventListener('change', rerenderForRegion);
+      document.getElementById('cw-region-clear').addEventListener('click', () => {
+        regionSel.value = ''; refreshSubdivisions();  // refreshSubdivisions() hides + resets #cw-sub for the now-placeholder selection
+        rerenderForRegion();
+      });
+
+      // Source toggle
+      document.querySelectorAll('.cw-source').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const next = btn.getAttribute('data-source');
+          if (next === source) return;
+          source = next;
+          hiddenCategories.clear();
+          document.querySelectorAll('.cw-source').forEach(b => {
+            const active = b.getAttribute('data-source') === source;
+            b.setAttribute('aria-pressed', active ? 'true' : 'false');
+            b.classList.toggle('bg-nature-700', active);
+            b.classList.toggle('text-white', active);
+            b.classList.toggle('font-medium', active);
+            b.classList.toggle('text-nature-700', !active);
+          });
+          paint();
+          updateRailCounts();
+        });
+      });
+
+      // Category filter (event-delegated; checkboxes are rebuilt per crop/source)
+      document.getElementById('cw-category-list').addEventListener('change', (ev) => {
+        const cb = ev.target.closest('.cw-cat');
+        if (!cb) return;
+        const cat = cb.getAttribute('data-cat');
+        if (cb.checked) hiddenCategories.delete(cat); else hiddenCategories.add(cat);
+        paint({ rebuildCategories: false });   // keep the checkbox list stable
+      });
+
+      updateRegionSummary();
+    })();
+  </script>
+</Layout>

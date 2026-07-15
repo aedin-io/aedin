@@ -1,0 +1,34 @@
+[
+  {
+    "id": "nematode-host-pathology",
+    "status": "guard",
+    "description": "Root-knot nematode parasitizing tomato → plant-pathologist (nematology), not entomology. [Pass-13 fix]",
+    "payload": { "interaction_category": "parasitism", "subject_name": "Meloidogyne incognita", "object_name": "Solanum lycopersicum" },
+    "target_table": "interactions",
+    "expected_critic": "plant-pathologist"
+  },
+  {
+    "id": "mycorrhizal-mutualism-soil",
+    "status": "guard",
+    "description": "Arbuscular mycorrhiza with maize → soil-scientist, even though a fungus is named.",
+    "payload": { "interaction_category": "mutualism", "subject_name": "Glomus intraradices", "object_name": "Zea mays", "notes": "arbuscular mycorrhiza" },
+    "target_table": "interactions",
+    "expected_critic": "soil-scientist"
+  },
+  {
+    "id": "aphid-herbivory-entomology",
+    "status": "guard",
+    "description": "Above-ground aphid herbivory on cabbage (no soil terms) → entomologist.",
+    "payload": { "interaction_category": "herbivory", "subject_name": "Brevicoryne brassicae", "object_name": "Brassica oleracea" },
+    "target_table": "interactions",
+    "expected_critic": "entomologist"
+  },
+  {
+    "id": "arthropod-herbivory-soil-overreach",
+    "status": "open",
+    "description": "Aphid herbivory whose notes mention soil nitrogen → SHOULD be entomologist, but SOIL_TERM_RE (checked before the arthropod-interaction branch) currently grabs it for soil-scientist. Documented backlog misroute.",
+    "payload": { "interaction_category": "herbivory", "subject_name": "Myzus persicae", "object_name": "Capsicum annuum", "notes": "sustained feeding reduces soil nitrogen uptake by the crop" },
+    "target_table": "interactions",
+    "expected_critic": "entomologist"
+  }
+]

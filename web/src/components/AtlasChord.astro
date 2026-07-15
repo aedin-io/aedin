@@ -1,0 +1,213 @@
+---
+/**
+ * AtlasChord — circular chord diagram showing interaction-density between
+ * agroeco functional buckets (producer/herbivore/predator/parasitoid/
+ * pathogen/mutualist/decomposer). Receives the same filtered subset as
+ * the graph + dendrogram and projects it onto a 7×7 directional matrix:
+ *
+ *   matrix[i][j] = count of edges where subject ∈ bucket_i and object ∈ bucket_j
+ *
+ * Same component contract as AtlasDendrogram:
+ *
+ *   window.atlasChord.update(nodes, edges)
+ *
+ * The chord is a *functional* lens — answers "which bucket pairs interact
+ * with what intensity?" Complements the dendrogram's taxonomic lens.
+ */
+---
+<div id="atlas-chord-container" class="relative h-full">
+  <svg id="atlas-chord-svg" class="block w-full h-full"></svg>
+  <div class="absolute top-2 left-2 bg-white/80 backdrop-blur-sm border border-nature-700/15 rounded px-2 py-1 text-[11px] text-earth-700 pointer-events-none">
+    <span id="atlas-chord-status">Loading chord…</span>
+  </div>
+  <div id="atlas-chord-tooltip" class="hidden absolute z-10 bg-white border border-nature-700/30 rounded shadow-lg px-3 py-2 text-xs pointer-events-none"></div>
+</div>
+
+<script>
+import { chord, ribbon } from 'd3-chord';
+import { arc } from 'd3-shape';
+import { select } from 'd3-selection';
+
+const BUCKETS = [
+  'producer', 'herbivore', 'predator', 'parasitoid',
+  'pathogen', 'mutualist', 'decomposer',
+];
+const BUCKET_INDEX = new Map(BUCKETS.map((b, i) => [b, i]));
+
+// Functional-role palette — distinct hues that don't collide with the
+// bio-category palette (so chord and dendrogram coexist visually).
+const BUCKET_COLORS: Record<string, string> = {
+  producer:   '#22C55E',
+  herbivore:  '#FB923C',
+  predator:   '#EF4444',
+  parasitoid: '#A855F7',
+  pathogen:   '#EC4899',
+  mutualist:  '#3B82F6',
+  decomposer: '#A16207',
+};
+
+interface Entity {
+  id: number;
+  agroeco_bucket: string | null;
+  scientific_name: string;
+}
+interface Edge {
+  subject_id: number;
+  object_id: number;
+  globi_term: string;
+}
+
+const svgEl = document.getElementById('atlas-chord-svg') as unknown as SVGSVGElement;
+const status = document.getElementById('atlas-chord-status') as HTMLElement;
+const tooltip = document.getElementById('atlas-chord-tooltip') as HTMLElement;
+const wrapper = document.getElementById('atlas-chord-container') as HTMLElement;
+
+function render(entities: Entity[], edges: Edge[]) {
+  if (!svgEl) return;
+
+  // Build the 7×7 directional matrix
+  const entById = new Map(entities.map(e => [e.id, e]));
+  const matrix = BUCKETS.map(() => new Array(BUCKETS.length).fill(0));
+  let edgesWithBuckets = 0;
+  for (const e of edges) {
+    const s = entById.get(e.subject_id);
+    const o = entById.get(e.object_id);
+    if (!s?.agroeco_bucket || !o?.agroeco_bucket) continue;
+    const si = BUCKET_INDEX.get(s.agroeco_bucket);
+    const oi = BUCKET_INDEX.get(o.agroeco_bucket);
+    if (si === undefined || oi === undefined) continue;
+    matrix[si][oi]++;
+    edgesWithBuckets++;
+  }
+
+  const rowSums = matrix.map(row => row.reduce((a, b) => a + b, 0));
+  const colSums = BUCKETS.map((_, j) => matrix.reduce((a, row) => a + row[j], 0));
+  const presentBuckets = BUCKETS.map((b, i) => ({ name: b, total: rowSums[i] + colSums[i] }))
+    .filter(b => b.total > 0);
+
+  if (presentBuckets.length < 2 || edgesWithBuckets === 0) {
+    status.textContent = 'Need ≥2 agroeco buckets with interactions to render the chord.';
+    select(svgEl).selectAll('*').remove();
+    return;
+  }
+
+  const rect = svgEl.getBoundingClientRect();
+  const width = rect.width || 1000;
+  const height = rect.height || 480;
+  const outerRadius = Math.max(80, Math.min(width, height) / 2 - 70);
+  const innerRadius = outerRadius - 16;
+
+  const chordLayout = chord()
+    .padAngle(0.06)
+    .sortSubgroups((a, b) => b - a);
+  const chords = chordLayout(matrix);
+
+  const arcGen = arc<any>().innerRadius(innerRadius).outerRadius(outerRadius);
+  const ribbonGen = ribbon<any, any>().radius(innerRadius);
+
+  const svg = select(svgEl)
+    .attr('viewBox', `${-width / 2} ${-height / 2} ${width} ${height}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+  svg.selectAll('*').remove();
+
+  const g = svg.append('g');
+
+  // Outer arcs (one per bucket)
+  const groupG = g.append('g')
+    .selectAll('g')
+    .data(chords.groups)
+    .join('g');
+
+  groupG.append('path')
+    .attr('d', arcGen as any)
+    .attr('fill', (d: any) => BUCKET_COLORS[BUCKETS[d.index]] || '#94A3B8')
+    .attr('stroke', '#fff')
+    .attr('stroke-width', 1)
+    .style('cursor', 'pointer')
+    .on('mouseenter', function (_e, d: any) {
+      tooltip.innerHTML = `
+        <div class="font-medium text-nature-900 capitalize">${BUCKETS[d.index]}</div>
+        <div class="text-[10px] text-earth-700 mt-0.5">
+          ${rowSums[d.index]} as subject · ${colSums[d.index]} as object · ${rowSums[d.index] + colSums[d.index]} total
+        </div>
+      `;
+      tooltip.classList.remove('hidden');
+      // Fade non-related ribbons
+      g.selectAll('.chord-ribbon').attr('opacity', (rd: any) =>
+        rd.source.index === d.index || rd.target.index === d.index ? 0.95 : 0.08
+      );
+    })
+    .on('mouseleave', () => {
+      tooltip.classList.add('hidden');
+      g.selectAll('.chord-ribbon').attr('opacity', 0.7);
+    });
+
+  // Bucket labels (outer)
+  groupG.append('text')
+    .each(function (d: any) {
+      d.angle = (d.startAngle + d.endAngle) / 2;
+    })
+    .attr('dy', '0.35em')
+    .attr('font-size', '11px')
+    .attr('font-family', 'system-ui, sans-serif')
+    .attr('fill', '#1F2937')
+    .attr('transform', (d: any) => `
+      rotate(${(d.angle * 180) / Math.PI - 90})
+      translate(${outerRadius + 8})
+      ${d.angle > Math.PI ? 'rotate(180)' : ''}
+    `)
+    .attr('text-anchor', (d: any) => (d.angle > Math.PI ? 'end' : 'start'))
+    .text((d: any) => `${BUCKETS[d.index]} (${rowSums[d.index] + colSums[d.index]})`)
+    .style('text-transform', 'capitalize')
+    .style('pointer-events', 'none');
+
+  // Ribbons (one per non-zero matrix cell)
+  g.append('g')
+    .attr('fill-opacity', 0.7)
+    .selectAll('path')
+    .data(chords)
+    .join('path')
+    .attr('class', 'chord-ribbon')
+    .attr('d', ribbonGen as any)
+    .attr('fill', (d: any) => BUCKET_COLORS[BUCKETS[d.source.index]] || '#94A3B8')
+    .attr('stroke', '#fff')
+    .attr('stroke-width', 0.3)
+    .attr('opacity', 0.7)
+    .style('cursor', 'pointer')
+    .on('mouseenter', function (_e, d: any) {
+      tooltip.innerHTML = `
+        <div class="text-[10px] text-earth-700 uppercase tracking-wide">interaction</div>
+        <div class="font-medium text-nature-900 capitalize">
+          ${BUCKETS[d.source.index]} → ${BUCKETS[d.target.index]}
+        </div>
+        <div class="text-[10px] text-earth-700 mt-0.5">
+          ${d.source.value} edges${d.source.index !== d.target.index ? ` · reverse: ${d.target.value}` : ''}
+        </div>
+      `;
+      tooltip.classList.remove('hidden');
+      select(this).attr('opacity', 1);
+    })
+    .on('mouseleave', function () {
+      tooltip.classList.add('hidden');
+      select(this).attr('opacity', 0.7);
+    });
+
+  // Tooltip positioning (relative to wrapper, which is `relative`)
+  wrapper.addEventListener('mousemove', (e: MouseEvent) => {
+    const r = wrapper.getBoundingClientRect();
+    tooltip.style.left = (e.clientX - r.left + 12) + 'px';
+    tooltip.style.top  = (e.clientY - r.top + 12) + 'px';
+  }, { once: false });
+
+  status.textContent = `${presentBuckets.length} buckets · ${edgesWithBuckets} bucket-tagged edges`;
+}
+
+(window as any).atlasChord = {
+  update(nodes: Entity[], edges: Edge[]) {
+    render(nodes, edges);
+  },
+  ready: true,
+};
+
+document.dispatchEvent(new CustomEvent('atlas:chord-ready'));
+</script>

@@ -1,0 +1,45 @@
+{
+  "name": "aedin-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AEDIN Phase 5b — public web UI (Astro 5 + Tailwind 4 + better-sqlite3, static-first)",
+  "scripts": {
+    "dev": "astro dev --port 3000",
+    "build": "npm run build:search && astro build && node scripts/build-atlas-data.js && pagefind --site dist",
+    "build:verify": "test -d dist/_worker.js && test -d dist/source && test -d dist/claim && test -d dist/region && test -d dist/interaction && test -d dist/atlas && test -d dist/crop-web && test -f dist/data/atlas.json && test -f dist/data/atlas-highlights.json && test -d dist/pagefind || (echo '✗ BUILD VERIFY FAILED: dist/ is missing expected outputs (_worker.js/ (SSR bundle dir for / and /entity/*), source/claim/region/interaction/atlas/crop-web/data/atlas.json/data/atlas-highlights.json/pagefind). Refusing to deploy.' && exit 1)",
+    "preview": "astro preview --port 3000",
+    "astro": "astro",
+    "deploy": "node scripts/assert-main-branch.cjs && AEDIN_USE_PUBLISHED=1 npm run build && npm run build:verify && wrangler pages deploy dist --project-name=agroeco --branch=main --commit-dirty=true",
+    "deploy:upload": "npm run build:verify && wrangler pages deploy dist --project-name=agroeco --branch=main --commit-dirty=true",
+    "build:d1": "node scripts/build-d1.cjs",
+    "build:search": "node scripts/build-search-index.cjs",
+    "freeze-db": "node scripts/freeze-published-db.cjs",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "astro": "^6.2.2",
+    "better-sqlite3": "^11.5.0",
+    "cytoscape": "^3.33.3",
+    "cytoscape-fcose": "^2.2.0",
+    "d3-chord": "^3.0.1",
+    "d3-hierarchy": "^3.1.2",
+    "d3-selection": "^3.0.0",
+    "d3-shape": "^3.2.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.0",
+    "@astrojs/cloudflare": "^12.6.13",
+    "@astrojs/sitemap": "^3.7.2",
+    "@cloudflare/workers-types": "^4.20260529.1",
+    "@tailwindcss/postcss": "^4.3.0",
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/better-sqlite3": "^7.6.11",
+    "pagefind": "^1.5.2",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.9",
+    "wrangler": "^4.88.0"
+  }
+}

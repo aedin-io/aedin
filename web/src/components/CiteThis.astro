@@ -1,0 +1,124 @@
+---
+// CiteThis — emits per-page citation buttons (BibTeX + RIS) and a "Copy
+// permalink" button. Used on /entity, /source, /claim pages.
+//
+// Props:
+//   kind: 'entity' | 'source' | 'claim'
+//   id: string slug or numeric claim id
+//   title: display title (for BibTeX 'title' field)
+//   authors?: author string (for source/claim pages; defaults to "AEDIN contributors" for entity pages)
+//   year?: number for BibTeX 'year' field; defaults to current year
+//   publication?: source.publication for source/claim pages
+//   url: canonical URL
+//
+// BibTeX entry shape: @misc for entity + globi pages, @article for source/claim
+// pages. RIS export shape: TY=GEN for entity/globi, TY=JOUR for source/claim.
+// GloBI records are aggregated (not independently verified), so they cite as
+// @misc with a "consult the primary reference" note — never as a journal article.
+
+interface Props {
+  kind: 'entity' | 'source' | 'claim' | 'globi';
+  id: string | number;
+  title: string;
+  authors?: string | null;
+  year?: number | null;
+  publication?: string | null;
+  url: string;
+}
+
+const { kind, id, title, authors, year, publication, url } = Astro.props;
+
+const citeKey = `agroeco-${kind}-${String(id).replace(/[^a-zA-Z0-9-]/g, '-')}`;
+const authorStr = authors || 'AEDIN contributors';
+const yearStr = year || new Date().getFullYear();
+const accessed = new Date().toISOString().slice(0, 10);
+
+// entity + globi both export as @misc / TY=GEN (generic web resources), but with
+// different provenance notes. source/claim stay @article / TY=JOUR.
+const isMisc = kind === 'entity' || kind === 'globi';
+const kindLabel = kind === 'globi' ? 'GloBI record' : kind;
+const miscNote = kind === 'globi'
+  ? `Aggregated GloBI interaction record via AEDIN. Not independently verified — consult the primary reference. Accessed: ${accessed}.`
+  : `Accessed: ${accessed}. AI-multi-critic-verified agroecological knowledge base.`;
+const risNote = kind === 'globi'
+  ? 'Aggregated GloBI interaction record. Not independently verified; consult the primary reference.'
+  : 'AI-multi-critic-verified agroecological knowledge base entry.';
+
+const bibtex = isMisc
+  ? `@misc{${citeKey},
+  author = {${authorStr}},
+  title  = {{${title}}},
+  year   = {${yearStr}},
+  url    = {${url}},
+  note   = {${miscNote}}
+}`
+  : `@article{${citeKey},
+  author     = {${authorStr}},
+  title      = {{${title}}},
+  year       = {${yearStr}},${publication ? `
+  journal    = {${publication}},` : ''}
+  url        = {${url}},
+  note       = {Indexed by AEDIN. Verified by AI multi-critic consensus.}
+}`;
+
+const ris = isMisc
+  ? `TY  - GEN
+T1  - ${title}
+AU  - ${authorStr}
+PY  - ${yearStr}
+UR  - ${url}
+N1  - ${risNote}
+ER  - `
+  : `TY  - JOUR
+T1  - ${title}
+AU  - ${authorStr}
+PY  - ${yearStr}${publication ? `
+JO  - ${publication}` : ''}
+UR  - ${url}
+N1  - Indexed by AEDIN. Verified by AI multi-critic consensus.
+ER  - `;
+---
+
+<div class="cite-this border border-nature-700/15 rounded-md p-3 bg-white" data-cite-this>
+  <div class="flex items-center justify-between gap-2 mb-2">
+    <h3 class="text-xs uppercase tracking-wide text-earth-700 m-0">Cite this {kindLabel}</h3>
+    <button type="button" class="text-xs text-nature-700 hover:underline cite-copy-permalink" data-url={url}>📎 Copy permalink</button>
+  </div>
+  <div class="flex flex-wrap gap-1.5">
+    <button type="button" class="cite-format-btn px-2.5 py-1 text-xs bg-nature-50 border border-nature-700/25 rounded font-mono hover:bg-nature-100 transition-colors"
+            data-format="bibtex" data-content={bibtex}>BibTeX</button>
+    <button type="button" class="cite-format-btn px-2.5 py-1 text-xs bg-nature-50 border border-nature-700/25 rounded font-mono hover:bg-nature-100 transition-colors"
+            data-format="ris" data-content={ris}>RIS</button>
+  </div>
+  <pre class="cite-preview hidden mt-2 text-[10px] bg-nature-50 border border-nature-700/15 rounded p-2 overflow-x-auto leading-relaxed"></pre>
+  <p class="cite-status text-[10px] text-nature-700 mt-1 hidden"></p>
+</div>
+
+<script is:inline>
+  document.querySelectorAll('[data-cite-this]').forEach(box => {
+    const preview = box.querySelector('.cite-preview');
+    const status = box.querySelector('.cite-status');
+    box.querySelectorAll('.cite-format-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const content = btn.dataset.content;
+        preview.textContent = content;
+        preview.classList.remove('hidden');
+        try {
+          await navigator.clipboard.writeText(content);
+          status.textContent = '✓ Copied ' + btn.dataset.format.toUpperCase() + ' to clipboard';
+          status.classList.remove('hidden');
+          setTimeout(() => status.classList.add('hidden'), 2200);
+        } catch {}
+      });
+    });
+    const permaBtn = box.querySelector('.cite-copy-permalink');
+    if (permaBtn) permaBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(permaBtn.dataset.url);
+        status.textContent = '✓ Permalink copied';
+        status.classList.remove('hidden');
+        setTimeout(() => status.classList.add('hidden'), 2200);
+      } catch {}
+    });
+  });
+</script>

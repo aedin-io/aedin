@@ -1,0 +1,400 @@
+---
+/**
+ * AtlasGraphCyto — A/B variant of AtlasGraph using Cytoscape.js instead of
+ * Sigma.js + graphology. Exposes the identical contract so atlas-cyto.astro
+ * is a near-clone of atlas.astro with one component swap:
+ *
+ *   window.atlasGraph.update(nodes, edges, { mode })
+ *   document dispatches: atlas:graph-ready, atlas:graph-hover, atlas:node-selected
+ *   document listens for: atlas:taxon-hover
+ *
+ * What Cytoscape gives us that Sigma doesn't:
+ *   - Layout switcher (Force / Concentric / Breadthfirst / Grid) with animated
+ *     transitions between layouts.
+ *   - Neighborhood-highlight-on-hover via built-in `:active` / collection ops.
+ *   - Per-element style cascading without rebuilding the renderer.
+ *   - Smoother camera and zoom.
+ *
+ * What it costs: ~120 KB gzipped bundle vs. Sigma's ~43 KB. Performance is
+ * comparable up to ~2K nodes; Sigma pulls ahead past that.
+ */
+---
+<div id="atlas-cyto-container" class="relative w-full h-full">
+  <div id="atlas-cyto-canvas" class="w-full h-full"></div>
+  <div id="atlas-cyto-overlay" class="absolute top-2 left-2 right-2 flex items-start justify-between gap-2 pointer-events-none">
+    <div class="bg-white/80 backdrop-blur-sm border border-nature-700/15 rounded px-2 py-1 text-[11px] text-earth-700 pointer-events-auto">
+      <span id="atlas-cyto-status">Loading highlights…</span>
+    </div>
+    <div class="flex gap-1 pointer-events-auto">
+      <div class="bg-white/80 backdrop-blur-sm border border-nature-700/15 rounded inline-flex text-[11px] overflow-hidden" role="tablist" aria-label="Layout">
+        <button class="cyto-layout px-2 py-0.5 bg-nature-700 text-white font-medium" data-layout="fcose" aria-selected="true">Force</button>
+        <button class="cyto-layout px-2 py-0.5 text-nature-700 hover:bg-nature-50" data-layout="concentric" aria-selected="false">Concentric</button>
+        <button class="cyto-layout px-2 py-0.5 text-nature-700 hover:bg-nature-50" data-layout="breadthfirst" aria-selected="false">Tree</button>
+        <button class="cyto-layout px-2 py-0.5 text-nature-700 hover:bg-nature-50" data-layout="grid" aria-selected="false">Grid</button>
+      </div>
+      <div id="atlas-cyto-truncated" class="hidden bg-amber-50 border border-amber-300 rounded px-2 py-1 text-[11px] text-amber-900"></div>
+    </div>
+  </div>
+  <div id="atlas-cyto-tooltip" class="hidden absolute z-10 bg-white border border-nature-700/30 rounded shadow-lg px-3 py-2 text-xs max-w-xs pointer-events-none"></div>
+</div>
+
+<script>
+import cytoscape from 'cytoscape';
+import fcose from 'cytoscape-fcose';
+import { mountSelectionPanel, groupNeighbors } from '../lib/graph-panel';
+
+cytoscape.use(fcose);
+
+const TAXA_COLORS = {
+  plantae:      '#73AC13',
+  invertebrate: '#FF4500',
+  vertebrate:   '#1E90FF',
+  fungi:        '#F52887',
+  microbe:      '#A855F7',
+  other:        '#94A3B8',
+};
+
+function termHue(term) {
+  let h = 0;
+  for (let i = 0; i < term.length; i++) h = (h * 31 + term.charCodeAt(i)) | 0;
+  return Math.abs(h) % 360;
+}
+function termColor(term) { return `hsl(${termHue(term)}, 60%, 35%)`; }
+
+// GloBI edges render in a muted grey (token from global.css, with a fallback so
+// Cytoscape always gets a concrete color).
+const GLOBI_EDGE_COLOR = (getComputedStyle(document.documentElement).getPropertyValue('--globi-edge').trim() || '#9CA3AF');
+
+function nodeSize(claimCount) {
+  const n = Math.max(1, claimCount);
+  return 6 + Math.min(18, Math.sqrt(n) * 1.6);
+}
+
+const MAX_VISIBLE_NODES = 800;
+const container = document.getElementById('atlas-cyto-canvas');
+const status = document.getElementById('atlas-cyto-status');
+const truncated = document.getElementById('atlas-cyto-truncated');
+const tooltip = document.getElementById('atlas-cyto-tooltip');
+const wrapper = document.getElementById('atlas-cyto-container');
+
+let cy = null;
+let activeLayout = 'fcose';
+let highlightedNodeId = null;
+
+const layoutOpts = {
+  fcose: {
+    name: 'fcose',
+    animate: true,
+    animationDuration: 600,
+    fit: true,
+    padding: 30,
+    quality: 'default',
+    randomize: true,
+    nodeRepulsion: 8000,
+    idealEdgeLength: 70,
+    edgeElasticity: 0.45,
+    gravity: 0.25,
+    numIter: 2500,
+  },
+  concentric: {
+    name: 'concentric',
+    animate: true,
+    animationDuration: 600,
+    fit: true,
+    padding: 30,
+    concentric: (n) => n.degree(),
+    levelWidth: () => 1,
+    minNodeSpacing: 12,
+  },
+  breadthfirst: {
+    name: 'breadthfirst',
+    animate: true,
+    animationDuration: 600,
+    fit: true,
+    padding: 30,
+    directed: true,
+    spacingFactor: 1.1,
+  },
+  grid: {
+    name: 'grid',
+    animate: true,
+    animationDuration: 500,
+    fit: true,
+    padding: 20,
+  },
+};
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function update(rawNodes, rawEdges, opts) {
+  if (cy) { cy.destroy(); cy = null; }
+
+  // Truncate to MAX_VISIBLE_NODES, keeping highest claim_count.
+  let displayNodes = rawNodes;
+  let truncCount = 0;
+  if (rawNodes.length > MAX_VISIBLE_NODES) {
+    truncCount = rawNodes.length - MAX_VISIBLE_NODES;
+    const sorted = [...rawNodes].sort((a, b) => b.claim_count - a.claim_count);
+    displayNodes = sorted.slice(0, MAX_VISIBLE_NODES);
+  }
+
+  // ALWAYS filter edges to those with both endpoints in displayNodes.
+  // Even when we didn't truncate, atlas.astro's .filter(Boolean) on nodes
+  // can drop entities missing from atlas.entities (e.g. no slug), leaving
+  // orphan edges. Sigma silently ignored them; Cytoscape throws on
+  // addEdge with a missing endpoint, so we must guard here.
+  const keep = new Set(displayNodes.map(n => n.id));
+  const displayEdges = rawEdges.filter(e => keep.has(e.subject_id) && keep.has(e.object_id));
+
+  if (!displayNodes.length) {
+    status.textContent = 'No nodes match the current filters.';
+    truncated.classList.add('hidden');
+    return;
+  }
+
+  const elements = [
+    ...displayNodes.map(n => ({
+      data: {
+        id: String(n.id),
+        label: n.scientific_name,
+        commonName: n.common_name || '',
+        slug: n.slug,
+        bioCategory: n.bio_category || 'other',
+        primaryRole: n.primary_role || '',
+        claimCount: n.claim_count,
+        color: TAXA_COLORS[n.bio_category || 'other'] || TAXA_COLORS.other,
+        size: nodeSize(n.claim_count),
+      },
+    })),
+    ...displayEdges.map(e => ({
+      data: {
+        // GloBI claim ids (D1) and literature claim ids (atlas.json) are
+        // independent sequences — namespace by provenance so they can't collide.
+        id: (e.provenance === 'globi' ? 'g' : 'e') + e.claim_id,
+        source: String(e.subject_id),
+        target: String(e.object_id),
+        globiTerm: e.globi_term,
+        region: e.region || '',
+        provenance: e.provenance || 'literature',
+        category: e.interaction_category,
+        color: e.provenance === 'globi' ? GLOBI_EDGE_COLOR : termColor(e.globi_term),
+      },
+    })),
+  ];
+
+  cy = cytoscape({
+    container,
+    elements,
+    minZoom: 0.1,
+    maxZoom: 8,
+    // Cytoscape complains about non-default wheelSensitivity values via
+    // a console warning. Leaving at default 1 silences the warning and
+    // matches user-expected zoom speed.
+    style: [
+      {
+        selector: 'node',
+        style: {
+          'background-color': 'data(color)',
+          'width': 'data(size)',
+          'height': 'data(size)',
+          'border-width': 0.5,
+          'border-color': '#fff',
+          'label': 'data(label)',
+          'font-size': 8,
+          'font-style': 'italic',
+          'color': '#1F2937',
+          'text-valign': 'center',
+          'text-halign': 'right',
+          'text-margin-x': 4,
+          'min-zoomed-font-size': 10,
+        },
+      },
+      {
+        selector: 'edge',
+        style: {
+          'line-color': 'data(color)',
+          'width': 1.4,
+          'target-arrow-shape': 'triangle',
+          'target-arrow-color': 'data(color)',
+          'arrow-scale': 0.7,
+          'curve-style': 'bezier',
+          'opacity': 0.75,
+        },
+      },
+      {
+        selector: 'edge[provenance = "globi"]',
+        style: { 'line-style': 'dashed', 'opacity': 0.5 },
+      },
+      {
+        selector: 'node.faded',
+        style: { opacity: 0.12 },
+      },
+      {
+        selector: 'edge.faded',
+        style: { opacity: 0.06 },
+      },
+      {
+        selector: 'node.highlighted',
+        style: {
+          'border-width': 2.5,
+          'border-color': '#1F2937',
+          'z-index': 999,
+        },
+      },
+      {
+        selector: 'edge.highlighted',
+        style: {
+          'width': 2.4,
+          'opacity': 1,
+          'z-index': 998,
+        },
+      },
+      { selector: 'node.selected', style: { 'border-width': 3, 'border-color': '#0F172A', 'z-index': 1000 } },
+    ],
+    layout: layoutOpts[activeLayout],
+  });
+
+  // Force a remeasure + fit after instantiation — protects against the
+  // container being 0×0 at the moment cytoscape() was called (e.g. when
+  // the panel was just unhidden via a tab switch).
+  requestAnimationFrame(() => {
+    if (!cy) return;
+    cy.resize();
+    cy.fit(undefined, 20);
+  });
+  // After the fcose / animated layout settles, refit once more so the
+  // viewport actually frames the final node positions.
+  cy.one('layoutstop', () => {
+    if (!cy) return;
+    cy.resize();
+    cy.fit(undefined, 20);
+  });
+
+  // Hover: highlight node + its 1-hop neighborhood; fade rest
+  cy.on('mouseover', 'node', (evt) => {
+    const n = evt.target;
+    const neighborhood = n.closedNeighborhood();
+    cy.elements().not(neighborhood).addClass('faded');
+    n.addClass('highlighted');
+    const d = n.data();
+    tooltip.innerHTML = `
+      <div class="italic font-medium text-nature-900">${escapeHtml(d.label)}</div>
+      ${d.commonName ? `<div class="text-earth-700">${escapeHtml(d.commonName)}</div>` : ''}
+      <div class="mt-1 text-[10px] text-earth-700">
+        <span class="font-mono">${d.bioCategory}</span>
+        ${d.primaryRole ? ` · <span class="font-mono">${d.primaryRole}</span>` : ''}
+      </div>
+      <div class="text-[10px] text-earth-700">${d.claimCount} claims · ${n.degree()} edges visible</div>
+      <div class="text-[10px] text-nature-700 mt-1">Click for details · Double-click to open page</div>
+    `;
+    tooltip.classList.remove('hidden');
+    document.dispatchEvent(new CustomEvent('atlas:graph-hover', { detail: { entityId: Number(n.id()) } }));
+  });
+  cy.on('mouseout', 'node', () => {
+    if (cy.nodes('.selected').length) {
+      cy.elements().removeClass('highlighted');           // keep persistent .faded
+    } else {
+      cy.elements().removeClass('faded').removeClass('highlighted');
+    }
+    tooltip.classList.add('hidden');
+    document.dispatchEvent(new CustomEvent('atlas:graph-hover', { detail: { entityId: null } }));
+  });
+  cy.on('tap', 'node', (evt) => {
+    const d = evt.target.data();
+    document.dispatchEvent(new CustomEvent('atlas:node-selected', { detail: { id: d.id, ...d } }));
+  });
+  cy.on('dbltap', 'node', (evt) => {
+    const d = evt.target.data();
+    if (d.slug) window.location.href = `/entity/${d.slug}`;
+  });
+
+  // Tooltip position
+  container.onmousemove = (e) => {
+    const r = wrapper.getBoundingClientRect();
+    tooltip.style.left = (e.clientX - r.left + 12) + 'px';
+    tooltip.style.top  = (e.clientY - r.top + 12) + 'px';
+  };
+
+  // External taxon-hover sync (from dendrogram on /atlas; not present here
+  // but kept for contract parity with AtlasGraph).
+  // Apply current highlight if set.
+  if (highlightedNodeId) {
+    const n = cy.getElementById(highlightedNodeId);
+    if (n.nonempty()) n.addClass('highlighted');
+  }
+
+  const modeLabel = opts?.mode === 'highlights' ? 'Highlights' : 'Filtered';
+  status.textContent = `${modeLabel}: ${displayNodes.length} nodes · ${displayEdges.length} edges · layout: ${activeLayout}`;
+  if (truncCount > 0) {
+    truncated.textContent = `Top ${MAX_VISIBLE_NODES} of ${displayNodes.length + truncCount} — narrow filters to see more`;
+    truncated.classList.remove('hidden');
+  } else {
+    truncated.classList.add('hidden');
+  }
+}
+
+// Layout switcher
+document.querySelectorAll('.cyto-layout').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const layout = btn.getAttribute('data-layout');
+    if (layout === activeLayout || !cy) return;
+    activeLayout = layout;
+    document.querySelectorAll('.cyto-layout').forEach(b => {
+      const active = b.getAttribute('data-layout') === layout;
+      b.setAttribute('aria-selected', active ? 'true' : 'false');
+      b.classList.toggle('bg-nature-700', active);
+      b.classList.toggle('text-white', active);
+      b.classList.toggle('font-medium', active);
+      b.classList.toggle('text-nature-700', !active);
+      b.classList.toggle('hover:bg-nature-50', !active);
+    });
+    cy.layout(layoutOpts[layout]).run();
+    const txt = status.textContent || '';
+    status.textContent = txt.replace(/layout: \w+/, `layout: ${layout}`);
+  });
+});
+
+// Taxon-hover from /atlas dendrogram (not present on this page, but keep
+// contract parity — if a future variant adds the dendrogram alongside,
+// this listener wires it up).
+document.addEventListener('atlas:taxon-hover', (ev) => {
+  const detail = ev.detail;
+  highlightedNodeId = detail?.entityId != null ? String(detail.entityId) : null;
+  if (!cy) return;
+  cy.nodes().removeClass('highlighted');
+  if (highlightedNodeId) {
+    const n = cy.getElementById(highlightedNodeId);
+    if (n.nonempty()) n.addClass('highlighted');
+  }
+});
+
+// Selection panel + persistent selection
+const atlasPanelRoot = document.getElementById('atlas-graph-panel');
+let atlasPanel = null;
+function atlasSelect(id) {
+  if (!cy) return;
+  cy.elements().removeClass('faded').removeClass('selected');
+  const n = cy.getElementById(String(id)); if (!n.length) return;
+  cy.elements().not(n.closedNeighborhood()).addClass('faded');
+  n.addClass('selected');
+  if (atlasPanel) atlasPanel.select(String(id));
+}
+if (atlasPanelRoot) {
+  atlasPanel = mountSelectionPanel(atlasPanelRoot, {
+    getNode: (id) => { const n = cy.getElementById(String(id)); if (!n.length) return undefined; const d = n.data(); return { id: d.id, label: d.label, commonName: d.commonName, slug: d.slug, bioCategory: d.bioCategory, primaryRole: d.primaryRole }; },
+    getNeighbors: (id) => groupNeighbors(String(id),
+      cy.nodes().map(n => ({ id: n.id(), label: n.data('label') })),
+      cy.edges().map(e => ({ subject_id: e.data('source'), object_id: e.data('target'), interaction_category: e.data('category') }))),
+    onSelect: atlasSelect,
+  });
+  document.addEventListener('atlas:node-selected', (ev) => atlasSelect(ev.detail.id));
+}
+
+window.atlasGraph = {
+  update,
+  ready: true,
+};
+document.dispatchEvent(new CustomEvent('atlas:graph-ready'));
+</script>

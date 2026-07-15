@@ -1,0 +1,151 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+// Programmatic upstreams AEDIN federates. Per-claim literature attribution
+// lives on each claim page; this catalogues the recurring programmatic sources,
+// their license, and the citation we recommend when reusing derived data.
+const sources: { name: string; bodyHtml: string; license: string; url: string; urlLabel: string; citation: string }[] = [
+  {
+    name: 'Global Biotic Interactions (GloBI)',
+    bodyHtml: `GloBI is the open infrastructure for species-interaction datasets that forms the substrate layer of AEDIN. We federate roughly 212,000 interaction records from GloBI, labelled <code>tier2_globi</code> in our data and surfaced with explicit "via GloBI" framing throughout the site.`,
+    license: 'Aggregate is largely CC0; individual records inherit upstream-dataset licenses (often CC-BY).',
+    url: 'https://www.globalbioticinteractions.org/',
+    urlLabel: 'globalbioticinteractions.org',
+    citation: 'Poelen JH, Simons JD, Mungall CJ. 2014. Global biotic interactions: An open infrastructure to share and analyze species-interaction datasets. Ecological Informatics 24:148–159.',
+  },
+  {
+    name: 'Global Biodiversity Information Facility (GBIF)',
+    bodyHtml: `GBIF provides the taxonomic backbone AEDIN resolves all scientific names against. Every entity carrying a <code>gbif_taxon_key</code> field has been mapped to the GBIF accepted-name graph.`,
+    license: 'CC-BY 4.0.',
+    url: 'https://www.gbif.org/',
+    urlLabel: 'gbif.org',
+    citation: 'GBIF Secretariat. 2025. GBIF Backbone Taxonomy. Checklist dataset https://doi.org/10.15468/39omei accessed via GBIF.org.',
+  },
+  {
+    name: 'Wikidata',
+    bodyHtml: `Wikidata supplies multilingual common-name enrichment and cross-identifier bridging (Wikipedia, GBIF keys, NCBI taxon identifiers) on entity pages.`,
+    license: 'CC0 — attribution conventional but not legally required.',
+    url: 'https://www.wikidata.org/',
+    urlLabel: 'wikidata.org',
+    citation: 'Vrandečić D, Krötzsch M. 2014. Wikidata: A free collaborative knowledgebase. Communications of the ACM 57(10):78–85.',
+  },
+  {
+    name: 'Trefle',
+    bodyHtml: `Trefle provides plant-trait enrichment — growth parameters, climate envelope, water and soil preferences — surfaced on crop entity pages.`,
+    license: 'Free public API with attribution.',
+    url: 'https://trefle.io',
+    urlLabel: 'trefle.io',
+    citation: 'Trefle.io. The Trefle plant data API. https://trefle.io',
+  },
+  {
+    name: 'USDA GRIN-Global',
+    bodyHtml: `The USDA Germplasm Resources Information Network provides crop variety and cultivar data for entities corresponding to registered germplasm.`,
+    license: 'US government work, public domain.',
+    url: 'https://npgsweb.ars-grin.gov/gringlobal/',
+    urlLabel: 'npgsweb.ars-grin.gov/gringlobal',
+    citation: 'USDA Agricultural Research Service. GRIN-Global. https://npgsweb.ars-grin.gov/gringlobal/search',
+  },
+  {
+    name: 'Open-Meteo',
+    bodyHtml: `Open-Meteo supplies climate-grid data — temperature, precipitation, growing-degree days — used on region pages and in the site-profile endpoint.`,
+    license: 'CC-BY 4.0.',
+    url: 'https://open-meteo.com/',
+    urlLabel: 'open-meteo.com',
+    citation: 'Zippenfenig P. 2023. Open-Meteo.com Weather API. Zenodo. https://doi.org/10.5281/zenodo.7970649',
+  },
+  {
+    name: 'SoilGrids (ISRIC)',
+    bodyHtml: `SoilGrids provides global gridded soil information — pH, organic carbon, texture — integrated alongside climate data in the site-profile and region surfaces.`,
+    license: 'CC-BY 4.0.',
+    url: 'https://soilgrids.org/',
+    urlLabel: 'soilgrids.org',
+    citation: 'Poggio L, de Sousa LM, Batjes NH, Heuvelink GBM, Kempen B, Ribeiro E, Rossiter D. 2021. SoilGrids 2.0: producing soil information for the globe with quantified spatial uncertainty. SOIL 7:217–240.',
+  },
+];
+---
+
+<Layout
+  title="Data sources"
+  description="The upstream data sources AEDIN aggregates, with license, citation, and attribution guidance for each."
+>
+  <article class="max-w-3xl mx-auto px-6 py-10">
+    <h1 class="text-3xl font-semibold text-nature-900">Data sources</h1>
+
+    <p class="text-base text-nature-900 mt-4">
+      AEDIN aggregates from several upstream data sources and an extensive corpus of open-access
+      scientific literature. This page catalogues every programmatic upstream we depend on, the
+      license under which we use it, and the citation we recommend when reusing derived data.
+      Per-claim literature attribution lives on each claim page rather than here.
+    </p>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-3 pb-1 border-b border-nature-700/15">
+      Programmatic data sources
+    </h2>
+
+    <div class="space-y-4">
+      {sources.map((s) => (
+        <div class="bg-nature-50/40 border-l-2 border-nature-700 rounded-r p-4">
+          <h3 class="text-base font-semibold text-nature-900">{s.name}</h3>
+          <p class="text-sm text-earth-700 mt-1" set:html={s.bodyHtml} />
+          <p class="text-xs text-earth-700 mt-2">
+            <strong class="text-nature-900">License:</strong> {s.license}<br />
+            <strong class="text-nature-900">URL:</strong>
+            <a href={s.url} class="text-nature-700 hover:underline" rel="noopener" target="_blank">{s.urlLabel}</a>
+          </p>
+          <p class="font-mono text-xs text-earth-700 bg-earth-50 border border-earth-700/20 rounded px-3 py-2 mt-2 whitespace-pre-wrap break-words">{s.citation}</p>
+        </div>
+      ))}
+    </div>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">Scientific literature</h2>
+    <p class="text-sm text-earth-700">
+      AEDIN has extracted atomic claims from a growing corpus of open-access peer-reviewed papers,
+      extension bulletins, and standard reference works. Each claim is attributed to its source on its
+      individual claim page, with verbatim quote, page number, full citation, and link to the original
+      where available. Major recurring source categories include open-access journals
+      (<em>Annals of the Entomological Society of America</em>, <em>Journal of Economic Entomology</em>,
+      <em>BioControl</em>, others); university extension publications (University of Guam, University of
+      Florida IFAS, University of Hawaii CTAHR, USDA SARE); and standard reference works
+      (Rubatzky &amp; Yamaguchi, <em>World Vegetables</em>; others as cited per claim).
+    </p>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">Standards and ontologies</h2>
+    <p class="text-sm text-earth-700">AEDIN conforms to:</p>
+    <ul class="text-sm text-earth-700 list-disc pl-5 space-y-1 mt-2">
+      <li>
+        <strong class="text-nature-900">GloBI Relations Ontology</strong> for the interaction vocabulary
+        (<code>predatorOf</code>, <code>parasitoidOf</code>, <code>pollinates</code>, etc.) — ensuring
+        AEDIN data is interoperable with the GloBI ecosystem.
+      </li>
+      <li>
+        <strong class="text-nature-900">Darwin Core</strong> for biodiversity-data term names on entity
+        records (<code>scientificName</code>, <code>taxonRank</code>, etc.).
+      </li>
+      <li>
+        <strong class="text-nature-900">GBIF backbone taxonomy</strong> as the canonical taxonomic
+        structure for all entity records.
+      </li>
+    </ul>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">How to cite AEDIN itself</h2>
+    <p class="text-sm text-earth-700">
+      When reusing AEDIN data, please cite both AEDIN and the relevant upstream source(s).
+      AEDIN's canonical citation is:
+    </p>
+    <p class="font-mono text-xs text-earth-700 bg-earth-50 border border-earth-700/20 rounded px-3 py-2 mt-2 whitespace-pre-wrap break-words">
+      LeBouef V. 2026. AEDIN: A citation-grounded knowledge base of agroecological interactions. https://aedin.io
+    </p>
+    <p class="text-sm text-earth-700 italic mt-2">
+      A persistent DOI for the AEDIN knowledge base will be registered via Zenodo and listed here when available.
+    </p>
+
+    <h2 class="text-lg font-semibold text-nature-900 mt-8 mb-2">Reuse and licensing of AEDIN-produced metadata</h2>
+    <p class="text-sm text-earth-700">
+      The structure linking claims to entities, sources, regions, and interaction terms — together with the
+      multi-critic verification metadata and aggregate statistics — is released under
+      <a href="https://creativecommons.org/licenses/by/4.0/" class="text-nature-700 hover:underline" rel="noopener" target="_blank">CC&nbsp;BY&nbsp;4.0</a>.
+      Verbatim source quotes shown on individual claim pages remain under the license of their original
+      source and may carry additional reuse constraints.
+    </p>
+  </article>
+</Layout>

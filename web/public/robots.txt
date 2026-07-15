@@ -1,0 +1,51 @@
+# Normal web crawlers (search engines etc.) — full access. SEO + academic
+# discoverability of entity/claim/region pages is intentionally preserved.
+User-agent: *
+Allow: /
+Disallow: /pagefind/
+
+# AI crawlers / agents — restricted to the public marketing pages ONLY:
+#   /        (home)      /about   (about)      /api   (API + waitlist page)
+# Everything else is the AEDIN knowledge base (the commercial data product):
+# entity/claim/globi/region/source/interaction pages, atlas, crop-web, and the
+# /api/*.json data endpoints — all off-limits to AI.
+#
+# Enforcement is layered: well-behaved AI bots honor this file; bots that ignore
+# it are blocked at the Cloudflare edge (WAF custom rule) and in the SSR worker
+# (known AI user-agents -> 403). The true access gate is the metered API.
+#
+# The allows are end-anchored ($) so `/api` matches the marketing page but NOT
+# `/api/atlas-globi.json` & friends (which fall through to `Disallow: /`).
+#
+# Note: Google-Extended / Applebot-Extended gate AI *training* only — listing
+# them here does not affect Google Search or normal Applebot indexing.
+User-agent: GPTBot
+User-agent: ChatGPT-User
+User-agent: OAI-SearchBot
+User-agent: ClaudeBot
+User-agent: anthropic-ai
+User-agent: Claude-Web
+User-agent: CCBot
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Bytespider
+User-agent: Amazonbot
+User-agent: Meta-ExternalAgent
+User-agent: meta-externalfetcher
+User-agent: FacebookBot
+User-agent: Diffbot
+User-agent: Omgilibot
+User-agent: cohere-ai
+User-agent: YouBot
+User-agent: Timpibot
+User-agent: ImagesiftBot
+Allow: /$
+Allow: /about$
+Allow: /about/$
+Allow: /api$
+Allow: /api/$
+Disallow: /
+
+Sitemap: https://aedin.io/sitemap-index.xml

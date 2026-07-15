@@ -1,0 +1,43 @@
+cff-version: 1.2.0
+message: >-
+  If you use AEDIN's data, claims, methodology, or software in your
+  research, please cite it as below.
+title: >-
+  AEDIN: An open agroecological knowledge base with multi-critic
+  AI consensus verification
+abstract: >-
+  AEDIN extracts atomic agroecological claims — pest, pathogen,
+  beneficial-insect, pollinator, mycorrhizal, soil, and crop-trait
+  relationships — from open-access scientific literature using a
+  large-language-model extraction pipeline, then verifies each claim
+  through a multi-critic AI consensus gate: two independent specialty
+  critics (agroecologist plus a domain expert from entomology, plant
+  pathology, soil science, or horticulture) must agree on plausibility,
+  with no implausible verdict, before a claim is promoted to public
+  visibility. Verified claims are published with verbatim source quotes,
+  page citations, and the full multi-critic verdict trail. Vocabulary is
+  aligned with the Global Biotic Interactions (GloBI) Relations Ontology
+  so claims can be pushed back to the public GloBI corpus.
+type: software
+authors:
+  - family-names: LeBouef
+    given-names: Vivek
+    orcid: "https://orcid.org/0009-0003-9406-950X"
+    affiliation: "University of Guam, Sustainable Agriculture program"
+    email: contact@aedin.io
+repository-code: "https://github.com/aedin-io/aedin"
+url: "https://aedin.io"
+license: MIT
+keywords:
+  - agroecology
+  - knowledge-base
+  - multi-critic-ai
+  - integrated-pest-management
+  - biological-control
+  - tritrophic-interactions
+  - global-biotic-interactions
+  - sustainable-agriculture
+  - llm-extraction
+  - open-access-literature
+version: "0.1.0"
+date-released: "2026-05-18"

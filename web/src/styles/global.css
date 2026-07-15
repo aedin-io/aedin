@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+/* =========================================================================
+   AEDIN design tokens — ported from the AEDIN Design System handoff
+   (claude.ai/design bundle "agroeco-design-system", project/colors_and_type.css).
+   The system was reverse-engineered from this very file + the graph/chip
+   components, then consolidated into a full token set. This @theme block
+   makes the functional palettes available as Tailwind utilities
+   (bg-bucket-predator, text-verdict-implausible, …) alongside the base scales.
+   ========================================================================= */
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Nature (green) — primary */
+  --color-nature-50:  #f4faf3;
+  --color-nature-100: #e6f3e4;
+  --color-nature-700: #2f6a31;
+  --color-nature-900: #173d1a;
+
+  /* Earth (brown) — secondary */
+  --color-earth-50:  #faf6ee;
+  --color-earth-700: #6b4f2a;
+
+  /* Agroeco bucket palette — functional fills for graph nodes + role chips */
+  --color-bucket-producer:   #22C55E;
+  --color-bucket-herbivore:  #FB923C;
+  --color-bucket-predator:   #EF4444;
+  --color-bucket-parasitoid: #A855F7;
+  --color-bucket-pathogen:   #EC4899;
+  --color-bucket-mutualist:  #3B82F6;
+  --color-bucket-decomposer: #A16207;
+  --color-bucket-fallback:   #94A3B8;
+  --color-bucket-focus:      #1F2937;
+  --color-bucket-antagonist: #14B8A6;
+  --color-bucket-supporter:  #84CC16;
+  --color-bucket-disruptor:  #991B1B;
+
+  /* Critic verdict colors (claim review) */
+  --color-verdict-plausible:   #15803d;
+  --color-verdict-implausible: #b91c1c;
+  --color-verdict-uncertain:   #a16207;
+}
+
+:root {
+  --color-ink: #1a1a1a;
+  --color-paper: #ffffff;
+
+  /* Alpha-green borders — never solid gray (design rule) */
+  --color-border:       rgba(47, 106, 49, 0.20);  /* header/footer */
+  --color-border-soft:  rgba(47, 106, 49, 0.15);  /* canonical card */
+  --color-border-faint: rgba(47, 106, 49, 0.12);
+  --color-divider:      rgba(47, 106, 49, 0.10);
+
+  /* Bucket palette as bare vars (graph fills / inline var() usage) */
+  --bucket-producer: #22C55E; --bucket-herbivore: #FB923C; --bucket-predator: #EF4444;
+  --bucket-parasitoid: #A855F7; --bucket-pathogen: #EC4899; --bucket-mutualist: #3B82F6;
+  --bucket-decomposer: #A16207; --bucket-fallback: #94A3B8; --bucket-focus: #1F2937;
+  --globi-edge: #9CA3AF;
+  --bucket-antagonist: #14B8A6; --bucket-supporter: #84CC16; --bucket-disruptor: #991B1B;
+
+  /* Bio-category chip palette (pastel 50/300 taxonomic badges) */
+  --bio-plantae-bg:      #f0fdf4; --bio-plantae-border:      #86efac;
+  --bio-invertebrate-bg: #fff7ed; --bio-invertebrate-border: #fdba74;
+  --bio-vertebrate-bg:   #eff6ff; --bio-vertebrate-border:   #93c5fd;
+  --bio-fungi-bg:        #fdf2f8; --bio-fungi-border:        #f9a8d4;
+  --bio-microbe-bg:      #faf5ff; --bio-microbe-border:      #d8b4fe;
+  --bio-other-bg:        #f1f5f9; --bio-other-border:        #cbd5e1;
+
+  /* Critic verdict (also bare, for inline var() in claim cards) */
+  --verdict-plausible: #15803d; --verdict-implausible: #b91c1c;
+  --verdict-uncertain: #a16207; --verdict-out-of-scope: var(--color-earth-700);
+
+  /* License / provenance badge */
+  --license-bg: var(--color-nature-50);
+  --license-text: var(--color-nature-900);
+  --license-border: var(--color-border-soft);
+
+  /* Warning / advisory (provenance, disputed, beta) */
+  --advisory-bg: #fffbeb; --advisory-border: #fcd34d; --advisory-text: #78350f;
+
+  /* Type scale */
+  --fs-h1: 1.875rem; --fs-h1-lg: 2.25rem; --fs-h2: 1.25rem; --fs-h3: 1.125rem;
+  --fs-body: 1rem; --fs-body-sm: 0.875rem; --fs-meta: 0.75rem;
+  --fs-eyebrow: 0.72rem; --fs-tag: 0.6875rem; --fs-mini: 0.625rem;
+
+  --lh-tight: 1.2; --lh-snug: 1.35; --lh-base: 1.5; --lh-relaxed: 1.7;
+  --tracking-eyebrow: 0.12em; --tracking-wide: 0.08em;
+  --fw-regular: 400; --fw-medium: 500; --fw-semibold: 600;
+
+  /* Spacing & radius */
+  --radius-sm: 4px; --radius: 6px; --radius-md: 8px; --radius-pill: 9999px;
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
+  --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem;
+
+  --shadow-card: 0 1px 2px rgba(23, 61, 26, 0.04);
+  --shadow-popover: 0 8px 24px rgba(23, 61, 26, 0.12);
+}
+
+html { font-family: var(--font-sans); color: var(--color-ink); }
+body { background: var(--color-nature-50); color: var(--color-ink); }
+
+/* =========================================================================
+   Design-system primitives — small reusable classes the templates can adopt.
+   ========================================================================= */
+
+/* Section eyebrow — small uppercase label above a content block */
+.eyebrow {
+  font-size: var(--fs-eyebrow);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--color-earth-700);
+  font-weight: var(--fw-medium);
+}
+
+/* Verbatim source quote — academic blockquote with a left rule */
+.verbatim {
+  border-left: 2px solid rgba(47, 106, 49, 0.40);
+  padding-left: var(--space-3);
+  font-style: italic;
+  color: var(--color-nature-900);
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-base);
+}
+
+/* Tabular numerals for stat strings / claim counts */
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* Em-dash empty-state placeholder (faded italic) */
+.empty-dash { color: var(--color-earth-700); font-style: italic; opacity: 0.7; }
+
+/* Pagefind UI theme override — match the nature/earth palette */
+.pagefind-skin {
+  --pagefind-ui-scale: 0.9;
+  --pagefind-ui-primary: #2f6a31;
+  --pagefind-ui-text: #173d1a;
+  --pagefind-ui-background: #ffffff;
+  --pagefind-ui-border: rgba(47, 106, 49, 0.2);
+  --pagefind-ui-tag: #f4faf3;
+  --pagefind-ui-border-width: 1px;
+  --pagefind-ui-border-radius: 6px;
+  --pagefind-ui-font: var(--font-sans);
+}

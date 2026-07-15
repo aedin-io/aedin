@@ -1,0 +1,22 @@
+You are an autonomous, UNATTENDED Claude Code session resuming a stalled ingestion recovery in /home/beef/projects/agroeco. No human is watching. Work carefully, log everything, commit + push at the end, and STOP with a written note if anything is genuinely ambiguous rather than guessing.
+
+## Background
+A ~30-book agroecology corpus was extracted + vouched around 2026-06-05 but stalled at the multi-critic consensus stage. ~939 "near-miss" staging rows have exactly 1 plausible verdict (from the agroecologist synthesizer) + 0 implausible + >=1 out_of_scope verdict from a MIS-ROUTED specialist critic. They fail the promote gate (needs >=2 plausible, 0 implausible) only because lib/critic-router.js sent the second critic slot to the wrong specialist, which correctly returned out_of_scope. Confirmed: the OOS comes from specialists (horticulturist/soil-scientist/plant-pathologist/entomologist), almost never the agroecologist. Read docs/phase-3-passlog.md, the CLAUDE.md "Open router-tuning backlog" section, and backend/GUAM-REINGEST-RESUME.md for the pipeline pattern. This is subscription-only — never use the Anthropic API; all LLM work routes through the Agent tool (general-purpose subagents).
+
+## Recovery steps (do in order)
+1. **Fix lib/critic-router.js routing** per the CLAUDE.md backlog: nematode-host claims -> plant-pathologist; above-ground arthropod herbivory -> entomologist; mycorrhizal/rhizobial mutualism -> soil-scientist; bare cereal/oilseed claims -> soil-scientist or agroecologist. Run the router's existing tests (look for lib/critic-router*.test.js or `node --test`) and make them pass. Commit this fix alone first.
+2. **Identify the 939** in backend/globi.sqlite: review_status='pending' AND source_id NOT IN (233,234) AND ai_vouch_status IN ('plausible','uncertain') AND the row has exactly 1 plausible + 0 implausible + >=1 out_of_scope in claim_critic_verdicts.
+3. **Reset the mis-routed verdicts** with backend/recovery-reset-verdicts.js (it backs up before deleting) — drop ONLY the out_of_scope specialist verdicts on those rows. The agroecologist's plausible verdict MUST remain.
+4. **Re-prepare** multi-critic batches scoped to those rows with the corrected router (multi-critic-batch-prepare.js honors BATCH_OUT_DIR + --source-id; it auto-excludes already-verdicted critic slots via NOT EXISTS, so only the now-missing specialist slot re-runs). Batch-size 8.
+5. **Dispatch critic subagents** (general-purpose Agents, sonnet) one per batch — each reads its batch JSON (critic_templates + claims), applies each claim's routed critic, writes [{staging_id, critic, verdict, note}] to a verdicts dir. Then multi-critic-batch-import.js (honors BATCH_OUT_DIR + VERDICTS_DIR). Forbid the subagents from running git/push.
+6. **Promote**: node promote-staged-claims.js scoped via --source-id to the DISTINCT source_ids of the rows you recovered (compute them; explicitly EXCLUDE 233 and 234, which are already done). Dry-run first, then apply.
+
+## Safety + hygiene
+- Run any bulk DB job under: systemd-run --user --scope -p MemoryMax=4G  (better-sqlite3, no huge in-memory arrays).
+- Use dedicated scratch dirs for batches/verdicts; clean them up at the end. Do NOT commit scratch dirs, the 43GB globi.sqlite, or backend/reingest/ prompt files.
+- Every DB mutation already logs to revision_log via the existing scripts — keep it that way.
+- Commit logical units (router fix; then the recovery result) and `git push origin main` after each. Pull/fetch first; other sessions commit to this same main branch — verify `git rev-parse HEAD origin/main` after pushing.
+- When done, append a "Pass: book-corpus router-recovery (2026-06-11)" entry to docs/phase-3-passlog.md with: rows reset, re-critiqued, newly-consensus-ready, promoted (interaction vs trait), and any genuine-reject residue. Commit + push it.
+- Do NOT publish to D1 (leave that for a coordinated build). Local DB + git only.
+
+Report a concise final summary to stdout: counts at each step and the commit SHAs.

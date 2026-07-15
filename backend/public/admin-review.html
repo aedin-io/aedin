@@ -1,0 +1,3762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AgroEco — admin review</title>
+  <style>
+    :root {
+      --nature-50: #f4faf3;
+      --nature-100: #eaf3e8;
+      --nature-200: #cfe6ce;
+      --nature-700: #2f6a31;
+      --nature-900: #173d1a;
+      --earth-50: #faf6ee;
+      --earth-700: #6b4f2a;
+      --red: #c0392b;
+      --yellow: #b78103;
+      --row-alt: #f9fbf8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--nature-50);
+      color: #1a1a1a;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    header {
+      background: white;
+      border-bottom: 1px solid rgba(47, 106, 49, 0.2);
+      padding: 12px 20px 0 20px;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    .header-row1 { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    header h1 { margin: 0; font-size: 16px; color: var(--nature-900); }
+    header .meta { font-size: 12px; color: var(--earth-700); }
+    header label { font-size: 12px; color: var(--earth-700); display: inline-flex; align-items: center; gap: 4px; }
+    header input[type=text], header select {
+      padding: 4px 8px;
+      border: 1px solid rgba(47, 106, 49, 0.3);
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: inherit;
+    }
+    header input[type=text] { width: 220px; }
+
+    /* Top-level workflow tabs (Ingest / Database / Publish) */
+    .top-tabs {
+      display: flex;
+      gap: 0;
+      margin-top: 10px;
+      border-bottom: 2px solid rgba(47, 106, 49, 0.18);
+    }
+    .top-tab-btn {
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      padding: 10px 22px;
+      font-size: 14px;
+      color: var(--earth-700);
+      font-family: inherit;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      position: relative;
+      bottom: -2px;
+    }
+    .top-tab-btn:hover { color: var(--nature-900); }
+    .top-tab-btn.active {
+      color: var(--nature-900);
+      font-weight: 700;
+      border-bottom: 3px solid var(--nature-700);
+    }
+    .top-tab-desc {
+      font-size: 11px;
+      color: var(--earth-700);
+      padding: 6px 4px 0 4px;
+      font-style: italic;
+    }
+
+    /* Ingest source picker — visible only when top-tab is 'ingest' */
+    .ingest-picker {
+      margin: 8px 0 4px 0;
+      padding: 10px 12px;
+      background: var(--nature-100);
+      border: 1px solid var(--nature-200);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 12px;
+    }
+    .ingest-picker.hidden { display: none; }
+    .ingest-picker label { color: var(--nature-900); font-weight: 600; }
+    .ingest-picker select {
+      padding: 5px 10px;
+      border: 1px solid rgba(47, 106, 49, 0.35);
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: inherit;
+      background: white;
+      min-width: 320px;
+      max-width: 100%;
+    }
+    .ingest-picker .source-meta {
+      color: var(--earth-700);
+      font-size: 11px;
+      font-style: italic;
+    }
+    .ingest-picker .source-meta strong { color: var(--nature-900); font-style: normal; }
+    .ingest-picker .clear-source {
+      cursor: pointer;
+      background: white;
+      border: 1px solid rgba(47, 106, 49, 0.2);
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 11px;
+      color: var(--earth-700);
+    }
+    .ingest-picker .clear-source:hover { border-color: var(--nature-700); color: var(--nature-900); }
+
+    /* Sub-tabs within each top-level group */
+    .tabs {
+      display: flex;
+      gap: 2px;
+      margin-top: 8px;
+      padding-top: 4px;
+    }
+    .tab-btn {
+      cursor: pointer;
+      background: transparent;
+      border: 1px solid transparent;
+      border-bottom: none;
+      border-top-left-radius: 6px;
+      border-top-right-radius: 6px;
+      padding: 7px 14px;
+      font-size: 13px;
+      color: var(--earth-700);
+      font-family: inherit;
+      font-weight: 500;
+      position: relative;
+      bottom: -1px;
+    }
+    .tab-btn:hover { color: var(--nature-900); }
+    .tab-btn.active {
+      background: var(--nature-50);
+      color: var(--nature-900);
+      border-color: rgba(47, 106, 49, 0.25);
+      border-bottom: 1px solid var(--nature-50);
+      font-weight: 600;
+    }
+    .tab-count {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 0 7px;
+      background: rgba(47, 106, 49, 0.12);
+      border-radius: 9px;
+      font-size: 11px;
+      color: var(--nature-900);
+    }
+    .tab-btn.active .tab-count { background: var(--nature-200); }
+
+    /* Chip-filter row (Staging verdict chips, reused in Task 10) */
+    .chip-row {
+      display: flex; gap: 6px; flex-wrap: wrap;
+      margin: 6px 16px 0;
+    }
+    .chip {
+      cursor: pointer;
+      border-radius: 12px;
+      padding: 4px 10px;
+      font-size: 12px;
+      background: rgba(47,106,49,0.06);
+      color: var(--earth-700);
+      border: 1px solid transparent;
+      user-select: none;
+    }
+    .chip:hover { background: rgba(47,106,49,0.12); }
+    .chip.active { background: var(--nature-700); color: white; }
+    .chip .count { opacity: 0.75; margin-left: 4px; font-variant-numeric: tabular-nums; }
+
+    /* Per-source progress strip (collapsible review card) */
+    .progress-strip {
+      margin: 8px 16px;
+      border: 1px solid rgba(47,106,49,0.2);
+      border-radius: 6px;
+      background: rgba(47,106,49,0.04);
+      font-size: 12px;
+      display: none;
+    }
+    .progress-strip.visible { display: block; }
+    .progress-strip .strip-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px; cursor: default;
+    }
+    .progress-strip .strip-title { font-weight: 600; color: var(--earth-700); font-size: 13px; flex: 1; }
+    .progress-strip .strip-date { color: var(--earth-700); font-size: 12px; }
+    .progress-strip .strip-clear { color: var(--earth-700); font-size: 12px; text-decoration: none; margin-left: auto; }
+    .progress-strip .strip-clear:hover { text-decoration: underline; }
+
+    /* Auto-advance banner */
+    .auto-advance-banner {
+      margin: 8px 16px; padding: 12px 16px;
+      background: rgba(47,106,49,0.10);
+      border: 1px solid var(--nature-700);
+      border-radius: 6px;
+      display: none;
+      font-size: 13px;
+    }
+    .auto-advance-banner.visible { display: block; }
+    .auto-advance-banner .check { color: var(--nature-700); font-weight: 600; }
+    .auto-advance-banner button {
+      margin-left: 8px; padding: 6px 12px; cursor: pointer;
+      background: var(--nature-700); color: white; border: none; border-radius: 4px;
+    }
+    .auto-advance-banner button.dismiss {
+      background: white; color: var(--earth-700);
+      border: 1px solid rgba(47,106,49,0.3);
+    }
+
+    /* Per-tab filter bar */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      padding: 10px 0 12px 0;
+      border-top: 1px solid rgba(47, 106, 49, 0.15);
+      margin-top: -1px;
+    }
+
+    main { padding: 16px 20px 100px; }
+    .table-wrap {
+      background: white;
+      border: 1px solid rgba(47, 106, 49, 0.15);
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead th {
+      background: var(--nature-50);
+      border-bottom: 1px solid rgba(47, 106, 49, 0.25);
+      padding: 7px 10px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--nature-900);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    tbody tr {
+      border-bottom: 1px solid rgba(47, 106, 49, 0.08);
+      vertical-align: top;
+    }
+    tbody tr:nth-child(even) { background: var(--row-alt); }
+    tbody tr.expanded { background: #eef7ee !important; }
+    tbody td { padding: 7px 10px; }
+
+    td.id { font-family: ui-monospace, "SF Mono", Consolas, monospace; color: var(--earth-700); white-space: nowrap; }
+    td.entity { min-width: 140px; max-width: 220px; }
+    td.entity .sci { font-style: italic; color: var(--nature-900); display: block; line-height: 1.25; }
+    td.entity .sci a { color: var(--nature-900); text-decoration: none; }
+    td.entity .sci a:hover { text-decoration: underline; }
+    td.entity .common { color: var(--earth-700); font-size: 11px; display: block; line-height: 1.25; }
+    td.cat { white-space: nowrap; }
+    .badge {
+      display: inline-block; padding: 1px 6px; border-radius: 3px;
+      background: var(--nature-50); border: 1px solid rgba(47, 106, 49, 0.2);
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em;
+      color: var(--nature-700); white-space: nowrap;
+    }
+    .badge.plantae       { background: #e8f5e9; }
+    .badge.invertebrate  { background: #fff3e0; }
+    .badge.vertebrate    { background: #e3f2fd; }
+    .badge.fungi         { background: #fce4ec; }
+    .badge.microbe       { background: #f3e5f5; }
+    td.interact { font-style: italic; color: var(--earth-700); white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+    td.quote {
+      max-width: 360px; cursor: pointer; color: #333;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    td.quote::before { content: '"'; color: var(--earth-700); }
+    td.quote::after  { content: '"'; color: var(--earth-700); }
+    tr.expanded td.quote { white-space: normal; max-width: none; font-style: italic; }
+    td.source { white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+    td.source a { color: var(--nature-700); text-decoration: none; }
+    td.source a:hover { text-decoration: underline; }
+    td.page { font-family: ui-monospace, "SF Mono", Consolas, monospace; color: var(--earth-700); white-space: nowrap; text-align: right; }
+    td.num { text-align: right; font-family: ui-monospace, "SF Mono", Consolas, monospace; color: var(--earth-700); }
+    td.status { white-space: nowrap; }
+    .pill {
+      display: inline-block; padding: 1px 7px; border-radius: 9px;
+      font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .pill.ai_reviewed { background: #fff8d6; color: #6a5800; }
+    .pill.human_verified        { background: #d6f0d8; color: #1c5e22; }
+    .pill.human_rejected        { background: #f7d6d6; color: #6e1818; }
+    .pill.disputed              { background: #fae3c4; color: #6e4609; }
+    td.actions { white-space: nowrap; }
+    td.actions button {
+      cursor: pointer; border: none; border-radius: 3px;
+      padding: 3px 8px; font-size: 11px; font-weight: 500;
+      margin-right: 2px; color: white;
+    }
+    td.actions button:disabled { opacity: 0.35; cursor: default; }
+    td.actions .accept { background: var(--nature-700); }
+    td.actions .accept:hover:not(:disabled) { background: var(--nature-900); }
+    td.actions .reject { background: var(--red); }
+    td.actions .reject:hover:not(:disabled) { background: #8a2820; }
+    td.actions .flag   { background: var(--yellow); }
+    td.actions .flag:hover:not(:disabled)   { background: #8a6303; }
+    td.reviewer { font-size: 11px; color: var(--earth-700); white-space: nowrap; }
+    td.title-cell { min-width: 220px; max-width: 360px; }
+    td.title-cell a { color: var(--nature-900); text-decoration: none; }
+    td.title-cell a:hover { text-decoration: underline; }
+    td.title-cell .meta { color: var(--earth-700); font-size: 11px; display: block; }
+    td.slug-cell { font-family: ui-monospace, "SF Mono", Consolas, monospace; color: var(--earth-700); font-size: 11px; }
+    td.slug-cell a { color: var(--earth-700); text-decoration: none; }
+    td.slug-cell a:hover { text-decoration: underline; }
+
+    .pager { display: flex; gap: 8px; align-items: center; margin: 16px 0; justify-content: center; }
+    .pager-info { font-size: 12px; color: var(--earth-700); }
+    .pager button {
+      cursor: pointer; background: white; border: 1px solid rgba(47, 106, 49, 0.2);
+      border-radius: 4px; padding: 4px 10px; font-size: 12px;
+    }
+    .pager button:hover:not(:disabled) { border-color: var(--nature-700); }
+    .pager button:disabled { opacity: 0.4; cursor: default; }
+
+    .empty { text-align: center; padding: 60px 20px; color: var(--earth-700); }
+
+    /* Bulk-select toolbar (Claims tab only, appears when ≥1 selected) */
+    .bulk-bar {
+      position: sticky;
+      top: 110px;
+      z-index: 4;
+      background: var(--nature-100);
+      border: 1px solid var(--nature-200);
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      color: var(--nature-900);
+    }
+    .bulk-bar.hidden { display: none; }
+    .bulk-bar button {
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      color: white;
+    }
+    .bulk-bar .accept { background: var(--nature-700); }
+    .bulk-bar .reject { background: var(--red); }
+    .bulk-bar .flag   { background: var(--yellow); }
+    .bulk-bar .clear  { background: white; color: var(--earth-700); border: 1px solid rgba(47,106,49,0.2); }
+    .bulk-bar button:hover:not(:disabled) { filter: brightness(0.9); }
+
+    td.checkbox, th.checkbox { width: 32px; padding-left: 8px; padding-right: 4px; }
+    td.checkbox input, th.checkbox input { cursor: pointer; }
+
+    /* Entity environmental detail panel (expandable per row) */
+    tr.env-detail-row td { padding: 14px 18px; background: #f1f7f0; border-bottom: 2px solid rgba(47, 106, 49, 0.2); }
+    .env-section { margin-bottom: 14px; }
+    .env-section h4 {
+      margin: 0 0 6px; font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--nature-700); font-weight: 600;
+    }
+    .env-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 6px 8px;
+      font-size: 11px;
+      align-items: start;
+    }
+    .env-field {
+      display: flex; flex-direction: column;
+      padding: 4px 6px; background: white;
+      border: 1px solid rgba(47, 106, 49, 0.12);
+      border-radius: 3px;
+      min-height: 0;
+    }
+    .env-field .label {
+      font-size: 10px; color: var(--earth-700); margin-bottom: 1px;
+    }
+    .env-field .value {
+      font-size: 12px; color: var(--nature-900);
+      cursor: text; min-height: 16px; word-break: break-word;
+      padding: 1px 0;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+    .env-field .value.empty {
+      color: #aaa; font-style: italic;
+      min-height: 16px;
+      padding: 1px 0;
+    }
+    .env-field .value:hover { background: var(--nature-50); }
+    .env-field .value input.edit-input,
+    .env-field .value select.edit-input { font-size: 12px; padding: 2px 4px; }
+
+    button.env-expand {
+      cursor: pointer;
+      background: transparent;
+      border: 1px solid rgba(47, 106, 49, 0.25);
+      border-radius: 3px;
+      padding: 1px 7px;
+      font-size: 11px;
+      color: var(--nature-700);
+    }
+    button.env-expand:hover { background: var(--nature-50); border-color: var(--nature-700); }
+    button.env-expand.expanded { background: var(--nature-700); color: white; border-color: var(--nature-700); }
+
+    /* Keyboard nav — focused row */
+    tr.row-focused td { outline: 2px solid var(--nature-700); outline-offset: -2px; }
+    .cheatsheet-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      display: none; align-items: center; justify-content: center; z-index: 9999;
+    }
+    .cheatsheet-backdrop.visible { display: flex; }
+    .cheatsheet {
+      background: white; border-radius: 8px; padding: 24px 32px;
+      max-width: 720px; max-height: 80vh; overflow: auto;
+      font-size: 13px;
+    }
+    .cheatsheet h2 { margin: 0 0 12px; }
+    .cheatsheet h3 { margin-top: 18px; color: var(--earth-700); font-size: 13px; }
+    .cheatsheet kbd {
+      background: var(--earth-50, rgba(47,106,49,0.06)); border: 1px solid rgba(0,0,0,0.15);
+      border-bottom-width: 2px; border-radius: 4px;
+      padding: 2px 6px; font-family: monospace; font-size: 11px;
+    }
+    .cheatsheet table { width: 100%; border-collapse: collapse; }
+    .cheatsheet td { padding: 4px 8px; vertical-align: top; }
+    .cheatsheet td.binding { white-space: nowrap; width: 1%; }
+
+    /* Inline-edit cell support */
+    td.editable { cursor: text; position: relative; }
+    td.editable:hover { background: rgba(47, 106, 49, 0.06); }
+    td.editable:hover::after {
+      content: '✎';
+      position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+      color: var(--earth-700); font-size: 11px; opacity: 0.7;
+    }
+    td.editable.empty-cell::before {
+      content: '+ add';
+      color: #aaa;
+      font-style: italic;
+    }
+    td.editable input.edit-input,
+    td.editable select.edit-input {
+      width: 100%; padding: 2px 4px;
+      font-size: 12px; font-family: inherit;
+      border: 1px solid var(--nature-700);
+      border-radius: 3px;
+      background: white;
+      box-sizing: border-box;
+    }
+
+    .toast {
+      position: fixed; bottom: 20px; right: 20px;
+      background: var(--nature-900); color: white;
+      padding: 8px 14px; border-radius: 4px; font-size: 12px;
+      opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 10;
+    }
+    .toast.show { opacity: 1; }
+    .toast.error { background: var(--red); }
+
+    /* ── Info tooltip icons ──────────────────────────────────────────────── */
+    .info-icon {
+      display: inline-block;
+      width: 14px; height: 14px; line-height: 14px;
+      text-align: center;
+      background: rgba(47,106,49,0.10);
+      color: var(--earth-700);
+      border-radius: 50%;
+      font-size: 10px;
+      font-weight: 600;
+      font-style: italic;
+      cursor: pointer;
+      margin-left: 4px;
+      user-select: none;
+      vertical-align: middle;
+    }
+    .info-icon:hover { background: rgba(47,106,49,0.20); }
+    .info-popover {
+      position: fixed;
+      z-index: 9999;
+      max-width: 360px;
+      background: white;
+      border: 1px solid rgba(47,106,49,0.3);
+      border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      padding: 12px 14px;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--earth-700);
+    }
+    .info-popover h4 {
+      margin: 0 0 6px;
+      font-size: 13px;
+      color: var(--nature-700);
+    }
+    .info-popover p { margin: 4px 0; }
+    .info-popover ul { margin: 4px 0 4px 18px; padding: 0; }
+    .info-popover li { margin: 2px 0; }
+    .info-popover code {
+      background: rgba(47,106,49,0.08);
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+    .info-popover .close {
+      float: right;
+      cursor: pointer;
+      color: var(--earth-700);
+      font-size: 16px;
+      line-height: 1;
+      margin-left: 8px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-row1">
+      <h1>AgroEco · admin review</h1>
+      <span class="meta" id="status-meta">Loading…</span>
+      <span style="flex:1"></span>
+      <label>Reviewer: <input type="text" id="reviewer" placeholder="Your name" /></label>
+      <label>Per page:
+        <select id="page-size">
+          <option value="25">25</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+        </select>
+      </label>
+    </div>
+    <div class="top-tabs" id="top-tabs"></div>
+    <div class="top-tab-desc" id="top-tab-desc"></div>
+    <div class="ingest-picker hidden" id="ingest-picker"></div>
+    <div class="progress-strip" id="progress-strip"></div>
+    <div class="auto-advance-banner" id="auto-advance-banner"></div>
+    <div class="tabs" id="tabs"></div>
+    <div class="filter-bar" id="filter-bar"></div>
+  </header>
+
+  <main>
+    <div class="bulk-bar hidden" id="bulk-bar">
+      <span><strong id="bulk-count">0</strong> selected</span>
+      <span style="flex:1"></span>
+      <button class="accept" onclick="confirmBulk('claims', 'accept')">✓ Accept selected</button>
+      <button class="reject" onclick="confirmBulk('claims', 'reject')">✕ Reject selected</button>
+      <button class="flag" onclick="confirmBulk('claims', 'flag')">⚐ Flag selected</button>
+      <button class="clear" onclick="clearSelection()">Clear</button>
+    </div>
+    <div class="bulk-bar hidden" id="bulk-bar-staging">
+      <span><strong id="bulk-count-staging">0</strong> selected</span>
+      <span style="flex:1"></span>
+      <button class="accept" onclick="confirmBulk('staging', 'accept')">✓ Accept selected</button>
+      <button class="reject" onclick="confirmBulk('staging', 'reject')">✕ Reject selected</button>
+      <button class="flag"   onclick="confirmBulk('staging', 'flag')">⚐ Flag selected</button>
+      <button class="clear" onclick="clearStagingSelection()">Clear</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr id="thead-row"></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="pager" id="pager"></div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const PUBLIC_BASE = 'https://agroeco.io';
+
+    // Populated lazily when the user enters the Ingest top-tab — list of
+    // sources with date + uploader subtext for the source-picker dropdown.
+    let ingestSourcesList = [];
+
+    // Populated on init from /api/admin/review/regions — list of distinct
+    // regional_context values across verified claims, with counts.
+    // Used to render the region-filter dropdowns on the Claims and Entities tabs.
+    let regionsList = [];
+    function regionOptions(selected) {
+      const opts = ['<option value="">(any region)</option>']
+        .concat(regionsList.map(r =>
+          `<option value="${esc(r.region)}" ${selected === r.region ? 'selected' : ''}>${esc(r.region)} (${r.n})</option>`
+        ));
+      return opts.join('');
+    }
+
+    function $(id) { return document.getElementById(id); }
+    function esc(s) {
+      if (s == null) return '';
+      return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]);
+    }
+
+    // ── Info-tooltip dictionary ───────────────────────────────────────────────
+    // Body supports inline HTML. Keyed by 'top:<key>', 'sub:<key>', 'col:<tab>:<col>'.
+    const INFO_TIPS = {
+      // Top-level workflow tabs
+      'top:ingest': {
+        title: 'Ingest',
+        body: '<p>Add new PDFs and verify what the AI extracted before it enters the live database. Flow: <code>Upload</code> → <code>Queue</code> → <code>Verify</code>.</p>'
+      },
+      'top:database': {
+        title: 'Database',
+        body: '<p>View and edit live data already in the system: claims (subject-predicate-object facts), entities (organisms), entity traits (numeric/categorical attributes), sources (papers), and the prioritized review queue.</p>'
+      },
+      'top:publish': {
+        title: 'Publish',
+        body: '<p>Push verified data outward — to the public site, GloBI CSV, and Trefle JSON. <em>Verified</em> = human-confirmed claims. Use the Verify sub-tab (Ingest) for per-field review and auto-promotion.</p>'
+      },
+
+      // Ingest sub-tabs
+      'sub:upload': {
+        title: 'Upload',
+        body: '<p>Drag-and-drop a PDF to add it to the extraction queue. The owner runs the extraction CLI offline; once extraction completes, the source appears in the Queue.</p>'
+      },
+      'sub:queue': {
+        title: 'Queue',
+        body: '<p>Lists every ingested source. Each row shows pending counts at the per-stage level and a <code>→ Verify</code> button that drills into that source.</p>'
+      },
+      'sub:staging': {
+        title: 'Verify',
+        body: '<p>Per-source review of AI-extracted claims. Each row is one extracted statement.</p>' +
+              '<p>Click <code>▸</code> to expand and see: source quote, multi-critic verdicts, the extracted payload, and the source PDF page.</p>' +
+              '<p>Per-field <code>✓</code> / <code>✕</code> buttons let you mark each field correct or wrong. When every field is touched, the row auto-promotes to <code>human_verified</code>.</p>'
+      },
+
+      // Database sub-tabs
+      'sub:claims': {
+        title: 'Claims',
+        body: '<p>Live claim graph (~3.5K rows). Each row is a <em>subject → relation → object</em> triple anchored to a source.</p>' +
+              '<p>Status values: <code>ai_reviewed</code> (AI-passed, awaiting human), <code>human_verified</code> (partner upgraded), <code>human_rejected</code>, <code>disputed</code>.</p>'
+      },
+      'sub:entities': {
+        title: 'Entities',
+        body: '<p>All organisms in the database (~194K rows). One row per scientific name.</p>' +
+              '<p>An entity is "needs attention" if any of: scientific_name, bio_category, taxonomy_path, or primary_role is null; or it\'s a crop without crop_type; or needs_dedup=1 (taxonomic typo).</p>'
+      },
+      'sub:entity_traits': {
+        title: 'Entity Traits',
+        body: '<p>Atomic entity attributes (~194K rows). Each row records one (entity, trait, source) tuple.</p>' +
+              '<p>Examples: <code>ph_min=5.5</code>, <code>thermal_max=35</code>, <code>active_months=[5,6,7,8]</code>. Driven by traits_vocabulary.</p>' +
+              '<p>Status: <code>unreviewed</code> / <code>ai_vouched</code> / <code>ai_reviewed</code> / <code>human_verified</code> / <code>edited</code> / <code>disputed</code> / <code>superseded</code>.</p>'
+      },
+      'sub:sources': {
+        title: 'Sources',
+        body: '<p>All ingested papers and books. Tracks slug, year, authors, source_type (peer_reviewed / book / api_sync), and license.</p>'
+      },
+      'sub:pendingCrops': {
+        title: 'Pending crops',
+        body: '<p>Crops referenced in extractions but not yet present in the entities table. Audit-only — the daily extraction pipeline auto-creates entity rows.</p>'
+      },
+      'sub:priority': {
+        title: 'Priority queue',
+        body: '<p>Ranked review queue from <code>v_review_priority</code> (migration 036). Rows ordered by <code>priority_score DESC</code> — the rows the system thinks most urgently need a human eye.</p>'
+      },
+
+      // Publish sub-tabs
+      'sub:published': {
+        title: 'Verified',
+        body: '<p>Claims with <code>review_status=\'human_verified\'</code> — the partner has confirmed via per-field correction or explicit Accept.</p>'
+      },
+      'sub:globi': {
+        title: 'GloBI export',
+        body: '<p>Generate a GloBI-canonical CSV of human-verified claims, ready to PR to the public GloBI repo. Schema matches <code>sourceTaxonName / interactionTypeName / targetTaxonName / referenceCitation</code> etc.</p>'
+      },
+      'sub:trefle': {
+        title: 'Trefle export',
+        body: '<p>Generate Trefle-compatible JSON of plant entities + their traits. Filtered to CC-BY / CC-BY-SA-licensed sources only (license-compatible with Trefle\'s redistribution).</p>'
+      },
+
+      // Verify (staging) tab columns
+      'col:staging:#': {
+        title: '# (staging id)',
+        body: '<p>Internal <code>extraction_staging.id</code>. Stable across the row\'s lifetime. Use it for filtering or referencing.</p>'
+      },
+      'col:staging:vouch': {
+        title: 'Vouch',
+        body: '<p>AI multi-critic verdict from the consensus pipeline.</p>' +
+              '<ul>' +
+              '<li><code>plausible</code> — both critics agreed it\'s plausible</li>' +
+              '<li><code>uncertain</code> — at least one critic was uncertain</li>' +
+              '<li><code>implausible</code> — at least one critic flagged it implausible</li>' +
+              '<li><code>out_of_scope</code> — outside the agroecological domain</li>' +
+              '<li><code>pending</code> — vouching hasn\'t run yet</li>' +
+              '</ul>' +
+              '<p>Not editable directly — set by the multi-critic pipeline.</p>'
+      },
+      'col:staging:status': {
+        title: 'Status (review_status)',
+        body: '<p>Staging row\'s review state.</p>' +
+              '<ul>' +
+              '<li><code>pending</code> — awaiting human review</li>' +
+              '<li><code>approved</code> — partner accepted (becomes <code>human_verified</code> post-promotion)</li>' +
+              '<li><code>rejected</code> — partner rejected the whole row</li>' +
+              '<li><code>flagged</code> — partner flagged for second look</li>' +
+              '<li><code>promoted</code> — auto-promoted by the multi-critic gate (becomes <code>ai_reviewed</code> on the live claim)</li>' +
+              '</ul>' +
+              '<p>Auto-updates when every payload field is marked via per-field <code>✓</code> / <code>✕</code> in the expand panel.</p>'
+      },
+      'col:staging:target': {
+        title: 'Target (target_table)',
+        body: '<p>Which live table this extraction populates when promoted.</p>' +
+              '<ul>' +
+              '<li><code>interactions</code>, <code>crop_vulnerabilities</code>, <code>attractor_relationship</code> → <code>claims</code> table</li>' +
+              '<li><code>entity_trait</code> → <code>entity_trait_claims</code> table</li>' +
+              '<li><code>crops</code>, <code>pests_pathogens</code> → <code>entities</code> enrichment</li>' +
+              '</ul>'
+      },
+      'col:staging:subject': {
+        title: 'Subject',
+        body: '<p>The actor in the relationship — the organism doing the action. To edit, click <code>▸</code> to expand the row; the subject field uses an entity-picker autocomplete.</p>'
+      },
+      'col:staging:object': {
+        title: 'Object',
+        body: '<p>The recipient of the action — the organism affected. Edit via the expand panel\'s entity-picker.</p>'
+      },
+      'col:staging:relation': {
+        title: 'Relation',
+        body: '<p>The interaction type (e.g., <code>biocontrol</code>, <code>pathogen_pressure</code>, <code>pollinates</code>). The GloBI-canonical predicate is shown in italics if mapped.</p>'
+      },
+      'col:staging:source_quote': {
+        title: 'Source quote',
+        body: '<p>The verbatim text from the source PDF that the AI extracted this claim from. The basis for the partner\'s verification call.</p>'
+      },
+      'col:staging:source': {
+        title: 'Source',
+        body: '<p>Citation: author, year, title. Click to open the source\'s detail page.</p>'
+      },
+
+      // Queue tab columns
+      'col:queue:title': {
+        title: 'Title',
+        body: '<p>Source title — the paper or book name. Drives most lookups.</p>'
+      },
+      'col:queue:year': {
+        title: 'Year',
+        body: '<p>Publication year. Used for citation building and chronology.</p>'
+      },
+      'col:queue:added': {
+        title: 'Added',
+        body: '<p>When the source was first ingested + by whom. From <code>sources.ingested_at</code> + <code>sources.added_by</code>.</p>'
+      },
+      'col:queue:review_pending': {
+        title: 'Verify pending',
+        body: '<p>Verify-tab work still open for this source. Format: <em>pending / total</em>.</p>'
+      },
+      'col:queue:entity_traits_pending': {
+        title: 'Entity traits pending',
+        body: '<p>Entity-trait extractions not yet human-verified for this source. Format: <em>pending / total</em>.</p>'
+      },
+      'col:queue:claims_pending': {
+        title: 'Claims pending',
+        body: '<p>Live claims awaiting human verification for this source. Format: <em>ai_reviewed / total</em>.</p>'
+      },
+      'col:queue:action': {
+        title: 'Action',
+        body: '<p>Click <code>→ Verify</code> to load this source into the Verify tab and start drilling into its staged extractions.</p>'
+      },
+
+      // Claims tab columns
+      'col:claims:#': {
+        title: '# (claim id)',
+        body: '<p>Internal <code>claims.id</code>. Stable across the claim\'s lifetime.</p>'
+      },
+      'col:claims:status': {
+        title: 'Status',
+        body: '<p>Live claim\'s review state.</p>' +
+              '<ul>' +
+              '<li><code>ai_reviewed</code> — passed AI multi-critic gate, awaiting human (public-visible)</li>' +
+              '<li><code>human_verified</code> — partner confirmed</li>' +
+              '<li><code>human_rejected</code> — partner rejected</li>' +
+              '<li><code>disputed</code> — flagged for second eyes</li>' +
+              '</ul>'
+      },
+      'col:claims:critics': {
+        title: 'Critics',
+        body: '<p>Per-critic verdicts that produced this claim. Hover each pill for the critic\'s reasoning + (post-migration-036) confidence + evidence-strength.</p>'
+      },
+      'col:claims:subject': {
+        title: 'Subject',
+        body: '<p>The actor in the relationship. Resolved to a row in <code>entities</code>.</p>'
+      },
+      'col:claims:object': {
+        title: 'Object',
+        body: '<p>The recipient of the action. Resolved to a row in <code>entities</code>.</p>'
+      },
+      'col:claims:globi': {
+        title: 'GloBI relation',
+        body: '<p>The GloBI-canonical interaction predicate (e.g., <code>pollinatedBy</code>, <code>pathogenOf</code>). Editable inline.</p>'
+      },
+      'col:claims:bucket': {
+        title: 'Bucket',
+        body: '<p>Coarse-grained interaction category (legacy axis). Use the GloBI relation column for canonical mapping.</p>'
+      },
+      'col:claims:cat': {
+        title: 'Category (bio_category)',
+        body: '<p>Top-level taxonomic group: plantae / invertebrate / vertebrate / fungi / microbe / other.</p>'
+      },
+      'col:claims:region': {
+        title: 'Region',
+        body: '<p>Where this claim was observed. Country/state name or <code>Global</code>.</p>'
+      },
+      'col:claims:source_quote': {
+        title: 'Source quote',
+        body: '<p>Verbatim source text. Click to expand long quotes.</p>'
+      },
+      'col:claims:source': {
+        title: 'Source',
+        body: '<p>Citation: author, year, title.</p>'
+      },
+      'col:claims:page': {
+        title: 'Page',
+        body: '<p>Page number in the source where this claim was found. Editable.</p>'
+      },
+      'col:claims:reviewer': {
+        title: 'Reviewer',
+        body: '<p>Who last touched the human-verification state of this claim.</p>'
+      },
+      'col:claims:actions': {
+        title: 'Actions',
+        body: '<p>Quick verdict buttons: <code>✓</code> Accept (→ human_verified), <code>✕</code> Reject (→ human_rejected). Greyed if not in <code>ai_reviewed</code> state.</p>'
+      },
+
+      // Entities tab columns
+      'col:entities:#': {
+        title: '# (entity id)',
+        body: '<p>Internal <code>entities.id</code>.</p>'
+      },
+      'col:entities:slug': {
+        title: 'Slug',
+        body: '<p>URL-safe identifier (e.g., <code>encarsia-formosa</code>). Used in public site URLs.</p>'
+      },
+      'col:entities:scientific_name': {
+        title: 'Scientific name',
+        body: '<p>Canonical Latin name. Inline-editable.</p>'
+      },
+      'col:entities:cat': {
+        title: 'Category (bio_category)',
+        body: '<p>plantae / invertebrate / vertebrate / fungi / microbe / other. Editable.</p>'
+      },
+      'col:entities:family': {
+        title: 'Family',
+        body: '<p>Taxonomic family. Often filled from GBIF; click <code>+ add</code> if missing.</p>'
+      },
+      'col:entities:genus': {
+        title: 'Genus',
+        body: '<p>Taxonomic genus. Often filled from GBIF; click <code>+ add</code> if missing.</p>'
+      },
+      'col:entities:primary_role': {
+        title: 'Primary role',
+        body: '<p>The entity\'s main agroecological role: crop / pest / pathogen_fungal / pollinator / predator / parasitoid / decomposer / etc.</p>'
+      },
+      'col:entities:crop_type': {
+        title: 'Crop type',
+        body: '<p>For crop entities, the type: vegetable / fruit / grain / legume / forage / etc. Required when primary_role=crop.</p>'
+      },
+      'col:entities:regions': {
+        title: 'Regions',
+        body: '<p>Where the entity is documented. <code>GLOBAL</code> + country tags.</p>'
+      },
+      'col:entities:dedup': {
+        title: 'Dedup',
+        body: '<p>If <code>1</code>, this entity is flagged as a likely taxonomic typo or duplicate of another row. Pending Levenshtein-merge sweep.</p>'
+      },
+      'col:entities:claims': {
+        title: 'Claims',
+        body: '<p>Number of live claims this entity participates in (as subject or object). Click to see them.</p>'
+      },
+
+      // Entity traits columns
+      'col:entity_traits:#':      { title: '# (trait id)',  body: '<p>Internal <code>entity_trait_claims.id</code>.</p>' },
+      'col:entity_traits:status': { title: 'Status',        body: '<p><code>unreviewed</code> / <code>ai_vouched</code> / <code>ai_reviewed</code> / <code>human_verified</code> / <code>edited</code> / <code>disputed</code> / <code>superseded</code>.</p>' },
+      'col:entity_traits:vouch':  { title: 'Vouch',         body: '<p>Single-critic AI vouch verdict (Haiku-tier). Set by the vouching pipeline.</p>' },
+      'col:entity_traits:entity': { title: 'Entity',        body: '<p>The organism this trait reading applies to. Click for the entity\'s detail page.</p>' },
+      'col:entity_traits:trait':  { title: 'Trait',         body: '<p>Trait name from <code>traits_vocabulary</code>. Examples: <code>ph_min</code>, <code>thermal_max</code>, <code>active_months</code>.</p>' },
+      'col:entity_traits:value':  { title: 'Value',         body: '<p>The reading. Type-discriminated: numeric (single number), categorical (string), range/list (JSON array).</p>' },
+      'col:entity_traits:unit':   { title: 'Unit',          body: '<p>Canonical unit when the value is numeric: °C, %, days, mm, etc.</p>' },
+      'col:entity_traits:region': { title: 'Region',        body: '<p>Regional context where this trait reading was observed; <code>Global</code> if unrestricted.</p>' },
+      'col:entity_traits:source': { title: 'Source',        body: '<p>Citation. Same shape as Claims column.</p>' },
+      'col:entity_traits:page':   { title: 'Page',          body: '<p>Page number in the source. Required for non-API sources.</p>' },
+      'col:entity_traits:quote':  { title: 'Quote',         body: '<p>Source quote backing the reading. Required for non-API sources.</p>' }
+    };
+
+    // ── Info-icon helper + popover logic ─────────────────────────────────────
+    function infoIcon(key) {
+      if (!INFO_TIPS[key]) return '';
+      return `<span class="info-icon" data-tip-key="${esc(key)}" onclick="showInfoTip(event,'${esc(key)}')" title="More info">i</span>`;
+    }
+
+    window.showInfoTip = function(event, key) {
+      event.stopPropagation();
+      closeInfoTips();
+      const tip = INFO_TIPS[key];
+      if (!tip) return;
+      const pop = document.createElement('div');
+      pop.className = 'info-popover';
+      pop.innerHTML = `<span class="close" onclick="this.parentElement.remove()">×</span><h4>${esc(tip.title || '')}</h4><div>${tip.body || ''}</div>`;
+      const rect = event.target.getBoundingClientRect();
+      pop.style.left = (rect.left + 18) + 'px';
+      pop.style.top  = (rect.bottom + 4) + 'px';
+      document.body.appendChild(pop);
+      setTimeout(() => {
+        const r = pop.getBoundingClientRect();
+        if (r.right  > window.innerWidth  - 8) pop.style.left = (window.innerWidth  - r.width  - 8) + 'px';
+        if (r.bottom > window.innerHeight - 8) pop.style.top  = (rect.top - r.height - 4) + 'px';
+      }, 0);
+    };
+
+    window.closeInfoTips = function() {
+      document.querySelectorAll('.info-popover').forEach(p => p.remove());
+    };
+
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.info-icon') && !e.target.closest('.info-popover')) closeInfoTips();
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeInfoTips(); });
+
+    // Pre-built map: tab key → array of info-key per column index (null = no icon).
+    const COLUMN_INFO_MAP = {
+      // staging: ['checkbox', '', '#', 'Vouch', 'Review', 'Target', 'Subject', 'Object', 'Relation', 'Source quote', 'Source'] — 11 cols
+      staging:      [null, null, 'col:staging:#', 'col:staging:vouch', 'col:staging:status', 'col:staging:target', 'col:staging:subject', 'col:staging:object', 'col:staging:relation', 'col:staging:source_quote', 'col:staging:source'],
+      // queue: ['Title', 'Year', 'Added', 'Review pending', 'Entity traits pending', 'Claims pending', 'Action'] — 7 cols
+      queue:        ['col:queue:title', 'col:queue:year', 'col:queue:added', 'col:queue:review_pending', 'col:queue:entity_traits_pending', 'col:queue:claims_pending', 'col:queue:action'],
+      // claims: ['checkbox', '', '#', 'Status', 'Critics', 'Subject', 'Cat', 'GloBI relation', 'Bucket', 'Object', 'Cat', 'Region', 'Source quote', 'Source', 'p.', 'Reviewer', 'Actions'] — 17 cols
+      claims:       [null, null, 'col:claims:#', 'col:claims:status', 'col:claims:critics', 'col:claims:subject', 'col:claims:cat', 'col:claims:globi', 'col:claims:bucket', 'col:claims:object', 'col:claims:cat', 'col:claims:region', 'col:claims:source_quote', 'col:claims:source', 'col:claims:page', 'col:claims:reviewer', 'col:claims:actions'],
+      // entities: ['#', 'Slug', 'Scientific name', 'Cat', 'Family', 'Genus', 'Primary role', 'Crop type', 'Regions', 'Dedup', 'Claims'] — 11 cols
+      entities:     ['col:entities:#', 'col:entities:slug', 'col:entities:scientific_name', 'col:entities:cat', 'col:entities:family', 'col:entities:genus', 'col:entities:primary_role', 'col:entities:crop_type', 'col:entities:regions', 'col:entities:dedup', 'col:entities:claims'],
+      // entity_traits: ['', '#', 'Status', 'Vouch', 'Entity', 'Trait', 'Value', 'Unit', 'Region', 'Source', 'Page', 'Quote'] — 12 cols
+      entity_traits: [null, 'col:entity_traits:#', 'col:entity_traits:status', 'col:entity_traits:vouch', 'col:entity_traits:entity', 'col:entity_traits:trait', 'col:entity_traits:value', 'col:entity_traits:unit', 'col:entity_traits:region', 'col:entity_traits:source', 'col:entity_traits:page', 'col:entity_traits:quote']
+    };
+
+    function toast(msg, isError) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.className = 'toast show' + (isError ? ' error' : '');
+      setTimeout(() => { t.className = 'toast' + (isError ? ' error' : ''); }, 2000);
+    }
+    function bioBadge(category) {
+      if (!category) return '<span class="badge">?</span>';
+      const cls = ['plantae','invertebrate','vertebrate','fungi','microbe'].includes(category) ? category : '';
+      return `<span class="badge ${cls}">${esc(category)}</span>`;
+    }
+    function entityCell(sciName, commonName, slug) {
+      const sci = slug
+        ? `<a href="${PUBLIC_BASE}/entity/${esc(slug)}" target="_blank">${esc(sciName)}</a>`
+        : esc(sciName || '');
+      const common = commonName ? `<span class="common">${esc(commonName)}</span>` : '';
+      return `<span class="sci">${sci}</span>${common}`;
+    }
+
+    // ── Tab definitions ───────────────────────────────────────────────────────
+    const tabs = {
+      claims: {
+        label: 'Claims',
+        endpoint: '/api/admin/review/queue',
+        defaultFilters: { status: 'ai_reviewed', region: '', staging_id: '', id: '' },
+        renderFilters: (f, lastResponse) => {
+          const statusDef = [
+            { key: 'ai_reviewed', label: 'AI-reviewed',           filterKey: 'status', filterValue: 'ai_reviewed' },
+            { key: 'human_verified',        label: 'Human-verified',         filterKey: 'status', filterValue: 'human_verified' },
+            { key: 'human_rejected',        label: 'Human-rejected',         filterKey: 'status', filterValue: 'human_rejected' },
+            { key: 'disputed',              label: 'Disputed',               filterKey: 'status', filterValue: 'disputed' }
+          ];
+          const counts = (lastResponse && lastResponse.status_counts) || {};
+          const chips = renderChipRow('claims', statusDef, counts, f.status);
+          return `
+            <label>Region:
+              <select name="region">${regionOptions(f.region)}</select>
+            </label>
+            ${chips}
+          `;
+        },
+        columns: ['<input type="checkbox" id="select-all" onchange="toggleSelectAll(this)" title="Select all on this page" />', '', '#', 'Status', 'Critics', 'Subject', 'Cat', 'GloBI relation', 'Bucket', 'Object', 'Cat', 'Region', 'Source quote', 'Source', 'p.', 'Reviewer', 'Actions'],
+        renderRow: (c) => {
+          const isPending = c.review_status === 'ai_reviewed';
+          const interaction = c.interaction_type_raw
+            ? esc(c.interaction_type_raw.replace(/_/g, ' '))
+            : esc(c.interaction_category || '');
+          const sourceCell = c.source_title ? (() => {
+            const inner = c.source_slug
+              ? `<a href="${PUBLIC_BASE}/source/${esc(c.source_slug)}" target="_blank">${esc(c.source_title)}</a>`
+              : esc(c.source_title);
+            const author = c.source_authors ? esc(c.source_authors.split(/[,;&]/)[0].trim()) : '';
+            const year = c.source_year ? esc(c.source_year) : '';
+            const cite = author ? `${author}${year ? ' ' + year : ''} · ` : (year ? year + ' · ' : '');
+            return `<span title="${esc(c.source_title)}">${cite}${inner}</span>`;
+          })() : '';
+          // Inline-edit attrs for Claim fields. Identity fields (subject /
+          // object / source) NOT editable — those need an entity-picker UX.
+          const cea = (field, type = 'text', selectOptions = null) => {
+            const opts = selectOptions ? ` data-edit-select='${esc(JSON.stringify(selectOptions))}'` : '';
+            return ` data-edit-tab="claims" data-edit-id="${c.id}" data-edit-field="${field}" data-edit-type="${type}"${opts}`;
+          };
+          const GLOBI_TERMS = ['','eats','preysOn','pollinates','pollinatedBy','visitsFlowersOf','parasiteOf','parasitoidOf','pathogenOf','hasHost','hasArbuscularMycorrhizalHost','arbuscularMycorrhizalHostOf','mutualistOf','vectorOf','hasVector','dispersalVectorOf','hasDispersalVector','interactsWith','endoparasiteOf','ectoparasiteOf'];
+          const globiTerm = c.interaction_type_globi
+            ? `<span class="badge" style="background:#e0f0e8;border-color:rgba(47,106,49,0.35);color:#1c5e22;font-family:ui-monospace" title="GloBI Relations Ontology term — click to edit">${esc(c.interaction_type_globi)}</span>`
+            : '<span style="color:#aaa">—</span>';
+          const bucketLabel = c.interaction_category
+            ? `<span style="font-size:11px;color:var(--earth-700)" title="Our coarse-grained bucket (legacy)">${esc(c.interaction_category.replace(/_/g, ' '))}</span>`
+            : '';
+          // Render the multi-critic verdict trail. critic_verdicts is a
+          // newline-joined string of "critic_name|verdict|reasoning|confidence|strength"
+          // rows from claim_critic_verdicts. We split it, render each
+          // critic's verdict as a small badge, and pack the reasoning,
+          // confidence and evidence strength into a hover tooltip per critic.
+          const critics = c.critic_verdicts
+            ? c.critic_verdicts.split('\n').map(line => {
+                const [name, verdict, reasoning, confidenceRaw, strength] = line.split('|');
+                if (!name) return '';
+                const verdictClass = verdict === 'plausible' ? 'human_verified'
+                  : verdict === 'implausible' ? 'human_rejected'
+                  : verdict === 'uncertain' ? 'disputed'
+                  : 'ai_reviewed';
+                const shortName = (name || '').replace(/^(extractor-)?vouch$/, 'vouch')
+                  .replace('agroecologist', 'agro').replace('plant-pathologist', 'path')
+                  .replace('entomologist', 'ento').replace('soil-scientist', 'soil')
+                  .replace('horticulturist', 'hort');
+                const conf = confidenceRaw && confidenceRaw !== '' ? ` (conf: ${parseFloat(confidenceRaw).toFixed(2)})` : '';
+                const strengthBadge = strength && strength !== '' ? `\n— evidence: ${strength}` : '';
+                return `<span class="pill ${verdictClass}" style="margin-right:2px" title="${esc(name)}${conf}: ${esc(verdict)}${reasoning ? '\n— ' + esc(reasoning) : ''}${strengthBadge}">${esc(shortName)}</span>`;
+              }).join('')
+            : '<span style="color:#aaa">—</span>';
+          const claimRowData = JSON.stringify({
+            id: c.id,
+            source_quote: c.source_quote,
+            source_page: c.source_page,
+            critic_verdicts: c.critic_verdicts,
+            source_id: c.source_id,
+            source_has_pdf: c.source_has_pdf,
+            source_title: c.source_title,
+            staging_id: c.staging_id,
+            subject: c.subject_scientific_name || '',
+            object: c.object_scientific_name || '',
+            relation: c.interaction_type_globi || c.interaction_type_raw || '',
+            region: c.regional_context,
+            review_status: c.review_status
+          });
+          const claimRowB64 = btoa(unescape(encodeURIComponent(claimRowData)));
+          return `<tr data-id="${c.id}" data-claim-row="${claimRowB64}" class="claim-row">
+            <td class="checkbox"><input type="checkbox" data-claim-id="${c.id}" onchange="toggleSelect(${c.id}, this)" /></td>
+            <td style="width:24px;padding:0 4px"><span class="expand-toggle" onclick="toggleClaimExpand(${c.id}, this)" style="cursor:pointer;user-select:none;color:var(--earth-700);font-weight:600;font-size:13px">&#9658;</span></td>
+            <td class="id">${c.id}</td>
+            <td class="status"><span class="pill ${esc(c.review_status)}">${esc(c.review_status.replace(/_/g, ' '))}</span></td>
+            <td>${critics}</td>
+            <td class="entity">${entityCell(c.subject_scientific_name, c.subject_common_name, c.subject_slug)}</td>
+            <td class="cat">${bioBadge(c.subject_bio_category)}</td>
+            <td class="editable"${cea('interaction_type_globi', 'select', GLOBI_TERMS)}>${globiTerm}</td>
+            <td>${bucketLabel}</td>
+            <td class="entity">${entityCell(c.object_scientific_name, c.object_common_name, c.object_slug)}</td>
+            <td class="cat">${bioBadge(c.object_bio_category)}</td>
+            <td class="editable ${c.regional_context ? '' : 'empty-cell'}"${cea('regional_context')}>${c.regional_context ? `<span class="badge">${esc(c.regional_context)}</span>` : ''}</td>
+            <td class="quote" onclick="toggleExpand(${c.id})" title="Click to expand">${esc(c.source_quote)}</td>
+            <td class="source">${sourceCell}</td>
+            <td class="page editable ${c.source_page ? '' : 'empty-cell'}"${cea('source_page')}>${esc(c.source_page || '')}</td>
+            <td class="reviewer">${c.reviewer_id ? esc(c.reviewer_id) : ''}${c.reviewed_at ? '<br>' + esc(c.reviewed_at.slice(0,10)) : ''}</td>
+            <td class="actions">
+              <button class="accept" ${isPending ? '' : 'disabled'} onclick="action(${c.id}, 'accept', this)" title="Accept">✓</button>
+              <button class="reject" ${isPending ? '' : 'disabled'} onclick="action(${c.id}, 'reject', this)" title="Reject">✕</button>
+              <button class="flag"   ${isPending ? '' : 'disabled'} onclick="action(${c.id}, 'flag',   this)" title="Flag">⚐</button>
+            </td>
+          </tr>`;
+        }
+      },
+
+      entities: {
+        label: 'Entities',
+        endpoint: '/api/admin/review/entities',
+        defaultFilters: { scope: 'verified', bio_category: '', needs_dedup: '', region: '', search: '', completeness: '', scientific_name: '', id: '' },
+        renderFilters: (f, lastResponse) => {
+          const completenessDef = [
+            { key: 'incomplete', label: 'needs attention', filterKey: 'completeness', filterValue: 'incomplete' },
+            { key: 'complete',   label: 'complete',        filterKey: 'completeness', filterValue: 'complete' }
+          ];
+          const counts = (lastResponse && lastResponse.completeness_counts) || {};
+          const chips = renderChipRow('entities', completenessDef, counts, f.completeness);
+          return `
+          <label>Scope:
+            <select name="scope">
+              <option value="verified" ${f.scope === 'verified' ? 'selected' : ''}>With verified claims</option>
+              <option value="all" ${f.scope === 'all' ? 'selected' : ''}>All entities (192K)</option>
+            </select>
+          </label>
+          <label>Category:
+            <select name="bio_category">
+              <option value="" ${f.bio_category === '' ? 'selected' : ''}>(any)</option>
+              <option value="plantae" ${f.bio_category === 'plantae' ? 'selected' : ''}>plantae</option>
+              <option value="invertebrate" ${f.bio_category === 'invertebrate' ? 'selected' : ''}>invertebrate</option>
+              <option value="vertebrate" ${f.bio_category === 'vertebrate' ? 'selected' : ''}>vertebrate</option>
+              <option value="fungi" ${f.bio_category === 'fungi' ? 'selected' : ''}>fungi</option>
+              <option value="microbe" ${f.bio_category === 'microbe' ? 'selected' : ''}>microbe</option>
+            </select>
+          </label>
+          <label>Region:
+            <select name="region">${regionOptions(f.region)}</select>
+          </label>
+          <label>Dedup:
+            <select name="needs_dedup">
+              <option value="" ${f.needs_dedup === '' ? 'selected' : ''}>(any)</option>
+              <option value="1" ${f.needs_dedup === '1' ? 'selected' : ''}>Needs dedup (typo flagged)</option>
+              <option value="0" ${f.needs_dedup === '0' ? 'selected' : ''}>Clean</option>
+            </select>
+          </label>
+          <label>Search:
+            <input type="text" name="search" value="${esc(f.search || '')}" placeholder="name / common / slug" />
+          </label>
+          ${chips}`;
+        },
+        columns: ['#', 'Slug', 'Scientific name', 'Cat', 'Family', 'Genus', 'Primary role', 'Crop type', 'Regions', 'Dedup', 'Claims'],
+        renderRow: (e) => {
+          const regions = e.regions
+            ? e.regions.split(',').slice(0, 3).map(r => `<span class="badge" style="margin-right:2px">${esc(r)}</span>`).join('')
+              + (e.regions.split(',').length > 3 ? ` <span style="color:var(--earth-700)">+${e.regions.split(',').length - 3}</span>` : '')
+            : '<span style="color:#aaa">—</span>';
+          // editAttrs(field) builds the data-* attrs for inline editing.
+          const ea = (field, type = 'text', selectOptions = null) => {
+            const opts = selectOptions ? ` data-edit-select='${esc(JSON.stringify(selectOptions))}'` : '';
+            return ` data-edit-tab="entities" data-edit-id="${e.id}" data-edit-field="${field}" data-edit-type="${type}"${opts}`;
+          };
+          return `<tr data-id="${e.id}" class="entity-row">
+            <td class="id">${e.id} <button class="env-expand" onclick="toggleEnvDetail(${e.id}, this)" title="Expand environmental detail">⊕</button></td>
+            <td class="slug-cell">${e.slug ? `<a href="${PUBLIC_BASE}/entity/${esc(e.slug)}" target="_blank">${esc(e.slug)}</a>` : '<span style="color:#aaa">—</span>'}</td>
+            <td class="entity">
+              <span class="sci">${e.slug ? `<a href="${PUBLIC_BASE}/entity/${esc(e.slug)}" target="_blank">${esc(e.scientific_name)}</a>` : esc(e.scientific_name || '')}</span>
+              <span class="common editable ${e.common_name ? '' : 'empty-cell'}"${ea('common_name')}>${esc(e.common_name || '')}</span>
+            </td>
+            <td class="cat editable"${ea('bio_category', 'select', ['', 'plantae', 'invertebrate', 'vertebrate', 'fungi', 'microbe', 'other'])}>${bioBadge(e.bio_category)}</td>
+            <td class="editable ${e.family ? '' : 'empty-cell'}"${ea('family')}>${esc(e.family || '')}</td>
+            <td class="editable ${e.genus ? '' : 'empty-cell'}"${ea('genus')}>${esc(e.genus || '')}</td>
+            <td class="editable ${e.primary_role ? '' : 'empty-cell'}"${ea('primary_role')}>${esc(e.primary_role ? e.primary_role.replace(/_/g, ' ') : '')}</td>
+            <td class="editable"${ea('crop_type', 'select', ['', 'vegetable', 'field_crop', 'fruit', 'nut', 'herb', 'forage', 'cover_crop'])}>${e.crop_type ? `<span class="badge">${esc(e.crop_type)}</span>` : '<span style="color:#aaa">—</span>'}</td>
+            <td style="max-width:200px">${regions}</td>
+            <td class="editable"${ea('needs_dedup', 'select', ['', '0', '1'])}>${e.needs_dedup ? '<span class="pill disputed">flag</span>' : '<span style="color:#aaa">—</span>'}</td>
+            <td class="num">${e.verified_claim_count || 0}</td>
+          </tr>`;
+        }
+      },
+
+      entity_traits: {
+        label: 'Entity traits',
+        endpoint: '/api/admin/review/entity-traits',
+        defaultFilters: { review_status: '', trait_name: '', entity_id: '', source_id: '', search: '', staging_id: '', id: '', show_misaligned: '' },
+        renderFilters: (f, lastResponse) => {
+          const statusDef = [
+            { key: 'unreviewed',            label: 'unreviewed',            filterKey: 'review_status', filterValue: 'unreviewed' },
+            { key: 'ai_vouched',            label: 'ai_vouched',            filterKey: 'review_status', filterValue: 'ai_vouched' },
+            { key: 'ai_reviewed', label: 'ai_reviewed', filterKey: 'review_status', filterValue: 'ai_reviewed' },
+            { key: 'human_verified',        label: 'human_verified',        filterKey: 'review_status', filterValue: 'human_verified' },
+            { key: 'edited',                label: 'edited',                filterKey: 'review_status', filterValue: 'edited' },
+            { key: 'disputed',              label: 'disputed',              filterKey: 'review_status', filterValue: 'disputed' },
+            { key: 'superseded',            label: 'superseded',            filterKey: 'review_status', filterValue: 'superseded' }
+          ];
+          const counts = (lastResponse && lastResponse.status_counts) || {};
+          const chips = renderChipRow('entity_traits', statusDef, counts, f.review_status);
+          return `
+          <label>Trait: <input type="text" name="trait_name" value="${esc(f.trait_name || '')}" placeholder="e.g. ph_min" /></label>
+          <label>Source ID: <input type="text" name="source_id" value="${esc(f.source_id || '')}" placeholder="numeric" /></label>
+          <label>Search: <input type="text" name="search" value="${esc(f.search || '')}" placeholder="entity / trait / value" /></label>
+          <label title="Include rows where the trait does not apply to the entity&#39;s bio_category"><input type="checkbox" name="show_misaligned" value="1" ${f.show_misaligned === '1' ? 'checked' : ''} /> Show misaligned</label>
+          ${chips}`;
+        },
+        columns: ['', '#', 'Status', 'Vouch', 'Entity', 'Trait', 'Value', 'Unit', 'Region', 'Source', 'Page', 'Quote'],
+        renderRow: (t) => {
+          const valueDisplay =
+            t.value_numeric != null ? esc(String(t.value_numeric)) :
+            t.value_text  ? esc(t.value_text) :
+            t.value_json  ? `<code style="font-size:11px">${esc(t.value_json)}</code>` :
+            '<span style="color:#aaa">—</span>';
+          const entityCell = `<a href="${PUBLIC_BASE}/entity/${esc(t.entity_id)}" target="_blank">${esc(t.entity_scientific_name || '')}</a>${t.entity_common_name ? ` <span style="color:var(--earth-700)">(${esc(t.entity_common_name)})</span>` : ''}`;
+          const traitRowData = JSON.stringify({
+            id: t.id,
+            source_quote: t.source_quote,
+            source_page: t.source_page,
+            critic_verdicts: t.critic_verdicts,
+            source_id: t.source_id,
+            source_has_pdf: t.source_has_pdf,
+            source_title: t.source_title,
+            staging_id: t.staging_id,
+            entity_scientific_name: t.entity_scientific_name,
+            trait_name: t.trait_name,
+            value_numeric: t.value_numeric,
+            value_text: t.value_text,
+            value_json: t.value_json,
+            unit: t.unit,
+            region: t.regional_context,
+            review_status: t.review_status
+          });
+          const traitRowB64 = btoa(unescape(encodeURIComponent(traitRowData)));
+          return `<tr data-id="${t.id}" data-trait-row="${traitRowB64}">
+            <td style="width:24px;padding:0 4px"><span class="expand-toggle" onclick="toggleTraitExpand(${t.id}, this)" style="cursor:pointer;user-select:none;color:var(--earth-700);font-weight:600;font-size:13px">&#9658;</span></td>
+            <td class="id">${t.id}</td>
+            <td><span class="pill ${esc(t.review_status || '')}">${esc(t.review_status || '')}</span></td>
+            <td>${t.ai_vouch_status ? `<span class="pill ${esc(t.ai_vouch_status)}">${esc(t.ai_vouch_status)}</span>` : '<span style="color:#aaa">—</span>'}</td>
+            <td>${entityCell}</td>
+            <td>${esc(t.trait_name)}</td>
+            <td>${valueDisplay}</td>
+            <td>${esc(t.unit || '')}</td>
+            <td>${esc(t.regional_context || '')}</td>
+            <td>${esc(t.source_title || '')}</td>
+            <td>${esc(t.source_page || '')}</td>
+            <td class="quote">${esc(t.source_quote || '')}</td>
+          </tr>`;
+        }
+      },
+
+      priority: {
+        label: 'Priority queue',
+        endpoint: '/api/admin/review/priority',
+        defaultFilters: {},
+        renderFilters: (f) => '',
+        columns: ['#', 'Score', 'Target table', 'Staging ID', 'Source ID'],
+        renderRow: (p) => `<tr data-id="${p.staging_id}">
+          <td class="id">${p.staging_id}</td>
+          <td style="font-variant-numeric:tabular-nums;font-weight:600">${typeof p.priority_score === 'number' ? p.priority_score.toFixed(2) : esc(p.priority_score || '')}</td>
+          <td><span class="badge">${esc(p.target_table || '')}</span></td>
+          <td>${p.staging_id}</td>
+          <td>${p.source_id || '—'}</td>
+        </tr>`
+      },
+
+      staging: {
+        label: 'Verify',
+        endpoint: '/api/admin/review/staging',
+        defaultFilters: { ai_vouch_status: '', review_status: '', target_table: '', search: '', scope: '' },
+        renderFilters: (f, lastResponse) => {
+          const scopeDef = [
+            { key: 'unreviewed',       label: 'Unreviewed',         filterKey: 'scope', filterValue: 'unreviewed' },
+            { key: 'claim_pending',    label: 'Claim pending',      filterKey: 'scope', filterValue: 'claim_pending' },
+            { key: 'trait_pending',    label: 'Trait pending',      filterKey: 'scope', filterValue: 'trait_pending' },
+            { key: 'entity_attention', label: 'Entity attention',   filterKey: 'scope', filterValue: 'entity_attention' }
+          ];
+          const scopeCounts = (lastResponse && lastResponse.scope_counts) || {};
+          const chips = renderChipRow('staging', scopeDef, scopeCounts, f.scope);
+          return `
+          <label>Vouch:
+            <select name="ai_vouch_status">
+              <option value="" ${f.ai_vouch_status === '' ? 'selected' : ''}>(any)</option>
+              <option value="pending" ${f.ai_vouch_status === 'pending' ? 'selected' : ''}>pending</option>
+              <option value="plausible" ${f.ai_vouch_status === 'plausible' ? 'selected' : ''}>plausible</option>
+              <option value="implausible" ${f.ai_vouch_status === 'implausible' ? 'selected' : ''}>implausible</option>
+              <option value="uncertain" ${f.ai_vouch_status === 'uncertain' ? 'selected' : ''}>uncertain</option>
+              <option value="out_of_scope" ${f.ai_vouch_status === 'out_of_scope' ? 'selected' : ''}>out_of_scope</option>
+            </select>
+          </label>
+          <label>Status:
+            <select name="review_status">
+              <option value="" ${f.review_status === '' ? 'selected' : ''}>(any)</option>
+              <option value="pending" ${f.review_status === 'pending' ? 'selected' : ''}>pending</option>
+              <option value="approved" ${f.review_status === 'approved' ? 'selected' : ''}>approved</option>
+              <option value="rejected" ${f.review_status === 'rejected' ? 'selected' : ''}>rejected</option>
+              <option value="promoted" ${f.review_status === 'promoted' ? 'selected' : ''}>promoted</option>
+            </select>
+          </label>
+          <label>Target table:
+            <select name="target_table">
+              <option value="" ${f.target_table === '' ? 'selected' : ''}>(any)</option>
+              <option value="interactions" ${f.target_table === 'interactions' ? 'selected' : ''}>interactions</option>
+              <option value="crop_vulnerabilities" ${f.target_table === 'crop_vulnerabilities' ? 'selected' : ''}>crop_vulnerabilities</option>
+              <option value="crops" ${f.target_table === 'crops' ? 'selected' : ''}>crops</option>
+              <option value="entity_trait" ${f.target_table === 'entity_trait' ? 'selected' : ''}>entity_trait</option>
+              <option value="attractor_relationship" ${f.target_table === 'attractor_relationship' ? 'selected' : ''}>attractor_relationship</option>
+            </select>
+          </label>
+          <label>Search:
+            <input type="text" name="search" value="${esc(f.search || '')}" placeholder="payload / source title" />
+          </label>${chips}`;
+        },
+        columns: ['<input type="checkbox" id="select-all-staging" onchange="toggleSelectAllStaging(this)" title="Select all on this page" />', '', '#', 'Vouch', 'Review', 'Target', 'Subject', 'Object', 'Relation', 'Source quote', 'Source'],
+        renderRow: (s) => {
+          const vouchPill = s.ai_vouch_status
+            ? `<span class="pill ${s.ai_vouch_status === 'plausible' ? 'human_verified' : s.ai_vouch_status === 'implausible' ? 'human_rejected' : s.ai_vouch_status === 'uncertain' ? 'disputed' : 'ai_reviewed'}">${esc(s.ai_vouch_status)}</span>`
+            : '<span style="color:#aaa">—</span>';
+          const reviewPill = s.review_status
+            ? `<span class="pill ${s.review_status === 'approved' ? 'human_verified' : s.review_status === 'rejected' ? 'human_rejected' : 'ai_reviewed'}">${esc(s.review_status)}</span>`
+            : '';
+          const sourceLink = s.source_title
+            ? (s.source_slug ? `<a href="${PUBLIC_BASE}/source/${esc(s.source_slug)}" target="_blank">${esc(s.source_title)}</a>` : esc(s.source_title))
+            : '';
+          const rowDataJSON = JSON.stringify({
+            id: s.id,
+            source_id: s.source_id,
+            source_has_pdf: s.source_has_pdf,
+            source_quote: s.source_quote,
+            source_page: s.source_page,
+            payload: s.payload,
+            critic_verdicts: s.critic_verdicts,
+            promoted_destination: s.promoted_destination
+          });
+          const rowDataB64 = btoa(unescape(encodeURIComponent(rowDataJSON)));
+          return `<tr data-id="${s.id}" data-staging-row="${rowDataB64}">
+            <td><input type="checkbox" class="row-select-staging" data-id="${s.id}" onchange="toggleStagingRow(${s.id}, this)" /></td>
+            <td style="width:24px;padding:0 4px"><span class="expand-toggle" onclick="toggleStagingExpand(${s.id}, this)" style="cursor:pointer;user-select:none;color:var(--earth-700);font-weight:600;font-size:13px">&#9658;</span></td>
+            <td class="id">${s.id}</td>
+            <td class="status">${vouchPill}</td>
+            <td class="status">${reviewPill}</td>
+            <td><span class="badge">${esc(s.target_table || '')}</span></td>
+            <td class="entity"><span class="sci">${esc(s.subject || '')}</span></td>
+            <td class="entity"><span class="sci">${esc(s.object || '')}</span></td>
+            <td class="interact">${esc(s.relationship || '')}</td>
+            <td class="quote" title="${esc(s.source_quote || s.extracted_claim || '')}">${esc(s.source_quote || s.extracted_claim || '')}</td>
+            <td class="source">${sourceLink}${s.source_year ? ` <span style="color:#aaa">${esc(s.source_year)}</span>` : ''}</td>
+          </tr>`;
+        }
+      },
+
+      queue: {
+        label: 'Queue',
+        endpoint: '/api/admin/review/ingest-sources',
+        defaultFilters: {},
+        noSourceScope: true,
+        renderFilters: () => '',
+        columns: ['Title', 'Year', 'Added', 'Review pending', 'Entity traits pending', 'Claims pending', 'Action'],
+        renderRow: (s) => {
+          const added = (s.added_at || s.ingested_at || '').slice(0, 10);
+          const addedBy = s.added_by ? ` by ${esc(s.added_by)}` : '';
+          return `<tr data-id="${s.id}">
+            <td>${esc(s.title || '')}</td>
+            <td>${esc(s.year || '')}</td>
+            <td><span style="font-size:11px;color:var(--earth-700)">${esc(added)}${addedBy}</span></td>
+            <td>${s.staging_pending ? `<span style="color:var(--red,#c0392b);font-weight:600">${s.staging_pending}</span> / ${s.staging_total || 0}` : `${s.staging_total || 0}`}</td>
+            <td>${s.entity_traits_pending ? `<span style="color:var(--red,#c0392b);font-weight:600">${s.entity_traits_pending}</span> / ${s.entity_traits_total || 0}` : `${s.entity_traits_total || 0}`}</td>
+            <td>${s.claims_pending ? `<span style="color:var(--red,#c0392b);font-weight:600">${s.claims_pending}</span> / ${s.claims_total || 0}` : `${s.claims_total || 0}`}</td>
+            <td><button onclick="reviewSourceFromQueue(${s.id})" style="padding:4px 10px;background:var(--nature-700,#2f6a31);color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px">→ Verify</button></td>
+          </tr>`;
+        }
+      },
+
+      pendingCrops: {
+        label: 'Pending crops',
+        endpoint: '/api/admin/review/pending-crops',
+        defaultFilters: { submitted: '0', search: '' },
+        renderFilters: (f) => `
+          <label>Submitted to Trefle:
+            <select name="submitted">
+              <option value="" ${f.submitted === '' ? 'selected' : ''}>(any)</option>
+              <option value="0" ${f.submitted === '0' ? 'selected' : ''}>Not yet</option>
+              <option value="1" ${f.submitted === '1' ? 'selected' : ''}>Submitted</option>
+            </select>
+          </label>
+          <label>Search:
+            <input type="text" name="search" value="${esc(f.search || '')}" placeholder="scientific / common name" />
+          </label>`,
+        columns: ['#', 'Scientific name', 'Common name', 'Region', 'Status', 'Source', 'Added'],
+        renderRow: (p) => {
+          const sourceTitle = p.source_title
+            ? (p.source_slug ? `<a href="${PUBLIC_BASE}/source/${esc(p.source_slug)}" target="_blank">${esc(p.source_title)}</a>` : esc(p.source_title))
+            : '';
+          return `<tr>
+            <td class="id">${p.id}</td>
+            <td class="entity"><span class="sci">${esc(p.scientific_name || '')}</span></td>
+            <td>${esc(p.common_name || '')}</td>
+            <td>${esc(p.region_context || '')}</td>
+            <td class="status">${p.trefle_submitted ? '<span class="pill human_verified">submitted</span>' : '<span class="pill ai_reviewed">pending</span>'}</td>
+            <td class="source">${sourceTitle}</td>
+            <td class="num" style="font-size:11px">${esc((p.created_at || '').slice(0, 10))}</td>
+          </tr>`;
+        }
+      },
+
+      // Inline-edit-aware tab below: cells render with data-edit-* attrs
+      // when the column is editable. The editCell() handler picks them up
+      // and PATCHes /api/admin/review/sources/:id (or entities/:id).
+      // ── Publish / external-push tabs (no new schema; per project_admin_restructure_decisions.md)
+      // columns and renderRow assigned post-init below — they reuse the
+      // claims and entities renderers since these tabs are filtered views
+      // over the same data.
+      published: {
+        label: 'Verified',
+        endpoint: '/api/admin/review/queue',
+        defaultFilters: { status: 'human_verified', region: '' },
+        renderFilters: (f) => `
+          <span style="font-size:12px;color:var(--earth-700);font-style:italic">
+            Claims that a human reviewer has explicitly accepted. These have the strongest trust signal.
+          </span>
+          <span style="flex:1"></span>
+          <label>Region:
+            <select name="region">${regionOptions(f.region)}</select>
+          </label>`
+      },
+
+      globi: {
+        label: 'GloBI export',
+        endpoint: '/api/admin/review/queue',
+        defaultFilters: { status: 'human_verified', region: '' },
+        renderFilters: (f) => `
+          <span style="font-size:12px;color:var(--earth-700);font-style:italic">
+            Human-verified claims, ready to be exported as a GloBI-compatible CSV for push-back to the public corpus.
+            See docs/globi-trefle-alignment.md.
+          </span>
+          <span style="flex:1"></span>
+          <button onclick="exportGlobiCsv()" style="cursor:pointer;background:var(--nature-700);color:white;border:none;border-radius:4px;padding:6px 14px;font-size:12px;font-weight:500" title="Download a CSV in GloBI's canonical interaction format (human_verified claims only)">Export CSV ↓</button>`
+      },
+
+      trefle: {
+        label: 'Trefle export',
+        endpoint: '/api/admin/review/entities',
+        defaultFilters: { scope: 'verified', bio_category: 'plantae', needs_dedup: '', region: '', search: '' },
+        renderFilters: (f) => `
+          <span style="font-size:12px;color:var(--earth-700);font-style:italic">
+            Plant entities from CC-licensed sources, eligible for push to Trefle (CC-BY-SA license-compatible).
+          </span>
+          <span style="flex:1"></span>
+          <label>Region:
+            <select name="region">${regionOptions(f.region)}</select>
+          </label>
+          <button onclick="exportTrefleJson()" style="cursor:pointer;background:var(--nature-700);color:white;border:none;border-radius:4px;padding:6px 14px;font-size:12px;font-weight:500" title="Download CC-licensed plant entities in Trefle-compatible JSON">Export JSON ↓</button>`
+      },
+
+      upload: {
+        label: 'Upload',
+        endpoint: null,         // no data fetch — pure form
+        defaultFilters: {},
+        renderFilters: () => '',
+        columns: [],
+        renderRow: () => '',
+        custom: true             // skip the standard load() path
+      },
+
+      dedupCandidates: { label: 'Candidates', custom: true, columns: [], renderRow: () => '', renderFilters: () => '', defaultFilters: {} },
+      dedupLog: { label: 'Audit / Undo', custom: true, columns: [], renderRow: () => '', renderFilters: () => '', defaultFilters: {} },
+
+      entityDedup: { label: 'Entity Dedup', custom: true, columns: [], renderRow: () => '', renderFilters: () => '', defaultFilters: {} },
+      entityDedupLog: { label: 'Entity Dedup Log', custom: true, columns: [], renderRow: () => '', renderFilters: () => '', defaultFilters: {} },
+
+      sources: {
+        label: 'Sources',
+        endpoint: '/api/admin/review/sources',
+        defaultFilters: { source_type: '', search: '' },
+        renderFilters: (f) => `
+          <label>Type:
+            <select name="source_type">
+              <option value="" ${f.source_type === '' ? 'selected' : ''}>(any)</option>
+              <option value="book" ${f.source_type === 'book' ? 'selected' : ''}>book</option>
+              <option value="paper" ${f.source_type === 'paper' ? 'selected' : ''}>paper</option>
+              <option value="extension" ${f.source_type === 'extension' ? 'selected' : ''}>extension</option>
+              <option value="report" ${f.source_type === 'report' ? 'selected' : ''}>report</option>
+            </select>
+          </label>
+          <label>Search:
+            <input type="text" name="search" value="${esc(f.search || '')}" placeholder="title / authors / slug" />
+          </label>
+          <button onclick="addSource()" style="margin-left:auto;cursor:pointer;background:var(--nature-700);color:white;border:none;border-radius:4px;padding:5px 12px;font-size:12px;font-weight:500">+ Add source</button>`,
+        columns: ['#', 'Slug', 'Title', 'Authors', 'Year', 'Type', 'License', 'DOI/URL', 'Claims'],
+        renderRow: (s) => {
+          const titleLink = s.slug
+            ? `<a href="${PUBLIC_BASE}/source/${esc(s.slug)}" target="_blank">${esc(s.title)}</a>`
+            : esc(s.title);
+          const link = s.doi
+            ? `<a href="https://doi.org/${esc(s.doi)}" target="_blank" rel="noopener">doi:${esc(s.doi.length > 24 ? s.doi.slice(0, 22) + '…' : s.doi)}</a>`
+            : (s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">link↗</a>` : '');
+          const firstAuthor = s.authors ? esc(s.authors.split(/[,;&]/)[0].trim()) : '';
+          // editAttrs(field) builds the data-* attrs for inline editing.
+          const ea = (field, type = 'text', selectOptions = null) => {
+            const opts = selectOptions ? ` data-edit-select='${esc(JSON.stringify(selectOptions))}'` : '';
+            return ` data-edit-tab="sources" data-edit-id="${s.id}" data-edit-field="${field}" data-edit-type="${type}"${opts}`;
+          };
+          const titleEditable = `<span class="full-title" data-full-title="${esc(s.title || '')}">${s.slug ? `<a href="${PUBLIC_BASE}/source/${esc(s.slug)}" target="_blank" onclick="event.stopPropagation()">${esc(s.title)}</a>` : esc(s.title || '')}</span>`;
+          return `<tr data-id="${s.id}">
+            <td class="id">${s.id}</td>
+            <td class="slug-cell">${s.slug ? esc(s.slug) : '<span style="color:#aaa">—</span>'}</td>
+            <td class="title-cell editable"${ea('title')}>${titleEditable}${s.publication ? `<span class="meta">${esc(s.publication)}</span>` : ''}</td>
+            <td class="editable ${s.authors ? '' : 'empty-cell'}"${ea('authors')}>${esc(s.authors || '')}</td>
+            <td class="num editable ${s.year ? '' : 'empty-cell'}"${ea('year', 'text')}>${esc(s.year || '')}</td>
+            <td class="editable"${ea('source_type', 'select', ['', 'book', 'paper', 'extension', 'report', 'preprint', 'thesis', 'website'])}>${s.source_type ? `<span class="badge">${esc(s.source_type)}</span>` : '<span style="color:#aaa">—</span>'}</td>
+            <td class="editable ${s.license ? '' : 'empty-cell'}"${ea('license')}>${esc(s.license || '')}</td>
+            <td class="editable ${s.url || s.doi ? '' : 'empty-cell'}"${ea('url')}>${link || ''}</td>
+            <td class="num">${s.verified_claim_count || 0}</td>
+          </tr>`;
+        }
+      }
+    };
+
+    // Post-init: publish tabs reuse the claims/entities columns + renderers
+    // (they're just filtered views over the same data, no need to duplicate
+    // the rendering logic).
+    tabs.published.columns      = tabs.claims.columns;
+    tabs.published.renderRow    = tabs.claims.renderRow;
+    tabs.globi.columns          = tabs.claims.columns;
+    tabs.globi.renderRow        = tabs.claims.renderRow;
+    tabs.trefle.columns         = tabs.entities.columns;
+    tabs.trefle.renderRow       = tabs.entities.renderRow;
+
+    // ── Top-level workflow groups (Ingest / Database / Publish) ──────────────
+    const tabGroups = {
+      ingest: {
+        label: 'Ingest',
+        desc: 'Add a new PDF and review what gets extracted before it enters the database.',
+        subs: ['upload', 'queue', 'staging']
+      },
+      database: {
+        label: 'Database',
+        desc: 'Review and edit the entire corpus — claims, entities, sources.',
+        subs: ['claims', 'entities', 'entity_traits', 'sources', 'pendingCrops', 'priority']
+      },
+      publish: {
+        label: 'Publish',
+        desc: 'Push human-verified claims live and export to GloBI / Trefle.',
+        subs: ['published', 'globi', 'trefle']
+      },
+      dedup: {
+        label: 'Dedup',
+        desc: 'Human-gated deduplication: review near-duplicate cultivars and entities, approve/keep-separate, undo merges.',
+        subs: ['dedupCandidates', 'dedupLog', 'entityDedup', 'entityDedupLog']
+      }
+    };
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    const state = {
+      topTab: 'database',
+      tab: 'claims',
+      // Ingest-only: which source the partner is currently reviewing.
+      // null = "no source picked" (Ingest sub-tabs render an empty-state
+      // prompt instead of fetching across all sources).
+      ingestSourceId: null,
+      page: 1,
+      pageSize: 50,
+      selectedIds: new Set(),
+      filters: {
+        claims:         { ...tabs.claims.defaultFilters },
+        entities:       { ...tabs.entities.defaultFilters },
+        entity_traits:  { ...tabs.entity_traits.defaultFilters },
+        priority:       {},
+        staging:        { ...tabs.staging.defaultFilters, scope: '' },
+        queue:          { ...tabs.queue.defaultFilters },
+        pendingCrops:   { ...tabs.pendingCrops.defaultFilters },
+        sources:        { ...tabs.sources.defaultFilters },
+        published:      { ...tabs.published.defaultFilters },
+        globi:          { ...tabs.globi.defaultFilters },
+        trefle:         { ...tabs.trefle.defaultFilters },
+        upload:         {}
+      },
+      lastResponse: {}
+    };
+
+    // ── URL hash routing ──────────────────────────────────────────────────────
+    const urlState = {
+      hydrate() {
+        const hash = window.location.hash.replace(/^#/, '');
+        if (!hash) return false;
+        const params = new URLSearchParams(hash);
+
+        if (params.has('topTab')) state.topTab = params.get('topTab');
+        if (params.has('subTab')) state.tab = params.get('subTab');
+        if (params.has('source')) {
+          const src = parseInt(params.get('source'), 10);
+          if (Number.isFinite(src)) state.ingestSourceId = src;
+        }
+        if (params.has('page')) {
+          const p = parseInt(params.get('page'), 10);
+          if (Number.isFinite(p) && p > 0) state.page = p;
+        }
+        for (const [k, v] of params) {
+          if (k.startsWith('filter.')) {
+            const filterKey = k.slice('filter.'.length);
+            const tabKey = state.tab;
+            if (state.filters[tabKey]) state.filters[tabKey][filterKey] = v;
+          }
+        }
+        return true;
+      },
+
+      build() {
+        const parts = [`topTab=${encodeURIComponent(state.topTab)}`,
+                       `subTab=${encodeURIComponent(state.tab)}`];
+        if (state.ingestSourceId) parts.push(`source=${state.ingestSourceId}`);
+        if (state.page && state.page !== 1) parts.push(`page=${state.page}`);
+
+        const tabFilters = state.filters[state.tab] || {};
+        const defaults = (tabs[state.tab] && tabs[state.tab].defaultFilters) || {};
+        for (const [k, v] of Object.entries(tabFilters)) {
+          if (v === '' || v == null) continue;
+          if (defaults[k] === v) continue;
+          parts.push(`filter.${k}=${encodeURIComponent(v)}`);
+        }
+        return parts.join('&');
+      },
+
+      push(method = 'replace') {
+        const next = '#' + this.build();
+        if (window.location.hash === next) return;
+        if (method === 'push') history.pushState(null, '', next);
+        else                   history.replaceState(null, '', next);
+      }
+    };
+
+    window.addEventListener('popstate', () => {
+      urlState.hydrate();
+      applyNav();
+    });
+
+    // ── Per-source progress strip ─────────────────────────────────────────────
+    const progressStrip = {
+      cache: null,
+      inflight: null,
+
+      async fetch() {
+        if (!state.ingestSourceId) { this.cache = null; return null; }
+        if (this.inflight) return this.inflight;
+        this.inflight = (async () => {
+          try {
+            const r = await fetch(`/api/admin/review/source-progress?source_id=${state.ingestSourceId}`);
+            if (!r.ok) return null;
+            return await r.json();
+          } finally {
+            this.inflight = null;
+          }
+        })();
+        this.cache = await this.inflight;
+        return this.cache;
+      },
+
+      render() {
+        const el = document.getElementById('progress-strip');
+        if (!el) return;
+        if (state.topTab !== 'ingest' || !state.ingestSourceId || !this.cache) {
+          el.classList.remove('visible');
+          el.innerHTML = '';
+          return;
+        }
+        const p = this.cache;
+        const titleText = p.source && p.source.title ? esc(p.source.title) : `Source ${state.ingestSourceId}`;
+        const addedText = (p.source && p.source.added_at)
+          ? ` · added ${esc(String(p.source.added_at).slice(0, 10))}` : '';
+        el.innerHTML = `
+          <div class="strip-header">
+            <span class="strip-title">Verifying: ${titleText}</span>
+            ${addedText ? `<span class="strip-date">${addedText}</span>` : ''}
+            <a href="#" class="strip-clear" onclick="setIngestSource(null);return false;">Clear selection</a>
+          </div>
+        `;
+        el.classList.add('visible');
+      }
+    };
+
+    // ── Auto-advance banner ───────────────────────────────────────────────────
+    // Non-modal banner that offers "Continue to <next stage>" when the current
+    // stage's pending count drops to zero for the selected source.
+    function escapeHtml(s) {
+      if (s == null) return '';
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+      }[c]));
+    }
+
+    const autoAdvance = {
+      evaluate() {
+        const el = document.getElementById('auto-advance-banner');
+        if (!el) return;
+        const p = progressStrip.cache;
+        if (!p || state.topTab !== 'ingest' || !state.ingestSourceId) {
+          el.classList.remove('visible');
+          el.innerHTML = '';
+          return;
+        }
+
+        // Per-stage offers (declared in nav order)
+        const offers = [
+          { stage: 'queue',    sub: 'staging',  pending: p.queue.pending,          nextLabel: 'Verify',
+            nextPending: p.staging.pending,      nextTotal: p.staging.total },
+          { stage: 'staging',  sub: 'entities', pending: p.staging.pending,        nextLabel: 'Entities',
+            nextPending: p.entities.incomplete,  nextTotal: p.entities.total },
+          { stage: 'entities', sub: 'claims',   pending: p.entities.incomplete,    nextLabel: 'Claims',
+            nextPending: p.claims.pending,       nextTotal: p.claims.total },
+          { stage: 'claims',   sub: null,       pending: p.claims.pending,         nextLabel: null,
+            nextPending: 0,                      nextTotal: 0 }
+        ];
+        const offer = offers.find(o => o.stage === state.tab && o.pending === 0);
+        if (!offer) { el.classList.remove('visible'); el.innerHTML = ''; return; }
+
+        const sourceTitle = (p.source && p.source.title) || `source ${p.source && p.source.id}`;
+        const ctaLabel = offer.sub ? `Continue to ${offer.nextLabel} →` : 'Pick a new source ↑';
+        const detail = offer.sub
+          ? `Next stage: ${offer.nextTotal} ${offer.nextLabel.toLowerCase()}, ${offer.nextPending} still need attention.`
+          : 'All claims for this source are reviewed.';
+        el.innerHTML = `
+          <span class="check">✓</span> All ${escapeHtml(offer.stage)} for "${escapeHtml(sourceTitle)}" are decided.
+          <div style="margin-top:6px;color:var(--earth-700)">${escapeHtml(detail)}</div>
+          <div style="margin-top:8px">
+            ${offer.sub ? `<button onclick="autoAdvance.go('${escapeHtml(offer.sub)}')">${ctaLabel}</button>` : ''}
+            <button class="dismiss" onclick="autoAdvance.dismiss()">Stay here</button>
+          </div>`;
+        el.classList.add('visible');
+      },
+      go(sub) {
+        if (typeof setTab === 'function') {
+          setTab(sub);
+        } else {
+          state.tab = sub;
+          if (typeof urlState !== 'undefined') urlState.push('push');
+          if (typeof renderTabs === 'function') renderTabs();
+          if (typeof load === 'function') load();
+        }
+        this.dismiss();
+      },
+      dismiss() {
+        const el = document.getElementById('auto-advance-banner');
+        if (el) { el.classList.remove('visible'); el.innerHTML = ''; }
+      }
+    };
+    window.autoAdvance = autoAdvance;
+
+    // ── Chip-filter helpers ───────────────────────────────────────────────────
+    // Generic chip-filter renderer (reused across tabs).
+    // chipDef: [{ key, label, filterKey, filterValue }, ...]
+    // counts: object keyed by chip.key → number
+    // activeValue: current value of state.filters[tabKey][filterKey]; '' / null → All active
+    function renderChipRow(tabKey, chipDef, counts, activeValue) {
+      if (!chipDef.length) return '';
+      const total = chipDef.reduce((s, c) => s + (counts[c.key] || 0), 0);
+      const allActive = !activeValue;
+      const filterKey = chipDef[0].filterKey;
+      const allChip = `<span class="chip ${allActive ? 'active' : ''}"
+          onclick="setChip('${tabKey}','${filterKey}','')">All <span class="count">${total}</span></span>`;
+      const others = chipDef.map(c => `
+          <span class="chip ${activeValue === c.filterValue ? 'active' : ''}"
+                onclick="setChip('${tabKey}','${c.filterKey}','${c.filterValue}')">
+            ${c.label}<span class="count">${counts[c.key] || 0}</span>
+          </span>`).join('');
+      return `<div class="chip-row">${allChip}${others}</div>`;
+    }
+
+    window.setChip = function(tabKey, filterKey, filterValue) {
+      if (!state.filters[tabKey]) return;
+      state.filters[tabKey][filterKey] = filterValue;
+      state.page = 1;
+      if (typeof urlState !== 'undefined') urlState.push('replace');
+      load();
+    };
+
+    // Click handler for pending-links in the progress strip.
+    window.jumpToStage = function(subTab, filterKey, filterVal) {
+      state.tab = subTab;
+      if (filterKey && state.filters[subTab]) {
+        state.filters[subTab][filterKey] = filterVal;
+      }
+      state.page = 1;
+      urlState.push('push');
+      applyNav();
+    };
+
+    // Route ALL progress-strip pending-links to Staging with a scope filter.
+    // This is the universal review surface for all things related to the selected source.
+    window.jumpToStagingWithScope = function(scope) {
+      state.topTab = 'ingest';
+      state.tab = 'staging';
+      state.page = 1;
+      if (!state.filters.staging) state.filters.staging = { ...tabs.staging.defaultFilters };
+      state.filters.staging.scope = scope || '';
+      state.filters.staging.ai_vouch_status = '';
+      state.filters.staging.review_status = '';
+      urlState.push('push');
+      applyNav();
+    };
+
+    // Re-fetch the strip after any successful mutation.
+    window.markSourceDirty = async function() {
+      if (state.topTab !== 'ingest' || !state.ingestSourceId) return;
+      await progressStrip.fetch();
+      progressStrip.render();
+      if (typeof autoAdvance !== 'undefined') autoAdvance.evaluate();
+    };
+
+    // ── Staging bulk-select state ────────────────────────────────────────────
+    const stagingSelected = new Set();
+
+    // ── Bulk-select on Claims ────────────────────────────────────────────────
+    function toggleSelect(id, checkbox) {
+      if (checkbox.checked) state.selectedIds.add(id);
+      else state.selectedIds.delete(id);
+      updateBulkBar();
+    }
+    function toggleSelectAll(headerCheckbox) {
+      const checked = headerCheckbox.checked;
+      document.querySelectorAll('input[data-claim-id]').forEach(cb => {
+        cb.checked = checked;
+        const id = parseInt(cb.dataset.claimId, 10);
+        if (checked) state.selectedIds.add(id);
+        else state.selectedIds.delete(id);
+      });
+      updateBulkBar();
+    }
+    function clearSelection() {
+      state.selectedIds.clear();
+      document.querySelectorAll('input[data-claim-id]').forEach(cb => { cb.checked = false; });
+      const sa = document.getElementById('select-all');
+      if (sa) sa.checked = false;
+      updateBulkBar();
+    }
+    function updateBulkBar() {
+      const bar = document.getElementById('bulk-bar');
+      const n = state.selectedIds.size;
+      document.getElementById('bulk-count').textContent = n;
+      bar.classList.toggle('hidden', n === 0 || state.tab !== 'claims');
+    }
+    async function bulkAction(action) {
+      if (state.selectedIds.size === 0) return;
+      const reviewer = $('reviewer').value.trim() || null;
+      const ids = Array.from(state.selectedIds);
+      try {
+        const res = await fetch('/api/admin/review/bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids, action, reviewer })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        toast(`Bulk ${action}: ${data.updated}/${data.requested} updated → ${data.review_status}`);
+        clearSelection();
+        load();
+        await markSourceDirty();
+      } catch (err) {
+        toast(`Error: ${err.message}`, true);
+      }
+    }
+
+    // ── Bulk-select on Staging ───────────────────────────────────────────────
+    window.toggleStagingRow = function(id, cb) {
+      if (cb.checked) stagingSelected.add(id); else stagingSelected.delete(id);
+      updateStagingBulkBar();
+    };
+    window.toggleSelectAllStaging = function(cb) {
+      document.querySelectorAll('#rows tr').forEach(tr => {
+        const id = parseInt(tr.dataset.id, 10);
+        const rowCb = tr.querySelector('input.row-select-staging');
+        if (rowCb) rowCb.checked = cb.checked;
+        if (Number.isFinite(id)) {
+          if (cb.checked) stagingSelected.add(id); else stagingSelected.delete(id);
+        }
+      });
+      updateStagingBulkBar();
+    };
+    window.clearStagingSelection = function() {
+      stagingSelected.clear();
+      document.querySelectorAll('#rows input.row-select-staging').forEach(cb => cb.checked = false);
+      const sa = document.getElementById('select-all-staging');
+      if (sa) sa.checked = false;
+      updateStagingBulkBar();
+    };
+    function updateStagingBulkBar() {
+      const bar = document.getElementById('bulk-bar-staging');
+      if (!bar) return;
+      const n = stagingSelected.size;
+      const cntEl = document.getElementById('bulk-count-staging');
+      if (cntEl) cntEl.textContent = n;
+      if (n > 0 && state.tab === 'staging') bar.classList.remove('hidden');
+      else                                   bar.classList.add('hidden');
+    }
+
+    // ── confirmBulk — centralized gate for staging + claims ─────────────────
+    window.confirmBulk = async function(tabKey, action) {
+      const sel = tabKey === 'staging' ? stagingSelected : state.selectedIds;
+      const ids = Array.from(sel);
+      if (ids.length === 0) return;
+
+      if (ids.length >= 2) {
+        const verb = action === 'accept' ? 'Accept' : action === 'reject' ? 'Reject' : 'Flag';
+        const ok = window.confirm(`${verb} ${ids.length} ${tabKey} rows?\n\nThis cannot be undone.`);
+        if (!ok) return;
+      }
+
+      const url = tabKey === 'staging' ? '/api/admin/staging/bulk' : '/api/admin/review/bulk';
+      let res;
+      try {
+        const reviewer = $('reviewer') ? $('reviewer').value.trim() || null : null;
+        res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids, action, ...(reviewer ? { reviewer } : {}) })
+        });
+      } catch (err) {
+        alert(`Network error during bulk ${action}: ${err.message}`);
+        return;
+      }
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        alert(`Bulk ${action} failed (${res.status}): ${body}`);
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      toast(`Bulk ${action}: ${data.updated ?? ids.length} updated`);
+
+      if (tabKey === 'staging') clearStagingSelection();
+      else clearSelection();
+      if (typeof load === 'function') await load();
+      if (typeof markSourceDirty === 'function') await markSourceDirty();
+    };
+
+    // ── Inline editing (Sources, Entities) ───────────────────────────────────
+    let editingCell = null;
+    function editCell(td) {
+      if (editingCell) return; // one at a time
+      const tab = td.dataset.editTab;
+      const id = td.dataset.editId;
+      const field = td.dataset.editField;
+      const type = td.dataset.editType || 'text';
+      const selectOptionsRaw = td.dataset.editSelect;
+      // Read current value: prefer data-full-title if present (for title cells),
+      // otherwise fall back to the cell's text content (stripped).
+      let current = '';
+      const fullTitleEl = td.querySelector('[data-full-title]');
+      if (fullTitleEl) current = fullTitleEl.dataset.fullTitle;
+      else current = td.textContent.trim().replace(/^—$/, '').replace(/^\+ add$/, '');
+
+      const originalHTML = td.innerHTML;
+      let input;
+      if (selectOptionsRaw) {
+        const opts = JSON.parse(selectOptionsRaw);
+        input = document.createElement('select');
+        input.className = 'edit-input';
+        for (const opt of opts) {
+          const o = document.createElement('option');
+          o.value = opt;
+          o.textContent = opt || '(none)';
+          if (opt === current) o.selected = true;
+          input.appendChild(o);
+        }
+      } else {
+        input = document.createElement('input');
+        input.className = 'edit-input';
+        input.type = type;
+        input.value = current;
+      }
+      td.innerHTML = '';
+      td.appendChild(input);
+      editingCell = { td, originalHTML, input, tab, id, field };
+      input.focus();
+      if (input.select) input.select();
+
+      input.addEventListener('blur', commitEdit);
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+        if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
+      });
+    }
+    function cancelEdit() {
+      if (!editingCell) return;
+      editingCell.td.innerHTML = editingCell.originalHTML;
+      editingCell = null;
+    }
+    async function commitEdit() {
+      if (!editingCell) return;
+      const { td, originalHTML, input, tab, id, field } = editingCell;
+      const newVal = input.value;
+      editingCell = null;
+      try {
+        const res = await fetch(`/api/admin/review/${tab}/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ [field]: newVal })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await res.json();
+        toast(`Saved ${tab} #${id}: ${field}`);
+        // Reload the current page to re-render with the new value.
+        load();
+        await markSourceDirty();
+      } catch (err) {
+        toast(`Save failed: ${err.message}`, true);
+        td.innerHTML = originalHTML;
+      }
+    }
+    // Delegated click handler for editable cells. Matches any element with
+    // data-edit-field — so `td.editable` cells in the spreadsheet AND
+    // `span.value.editable` cells in the env-detail panel both work.
+    document.addEventListener('click', e => {
+      const el = e.target.closest('[data-edit-field]');
+      if (!el || el.querySelector('.edit-input')) return;
+      // Don't intercept clicks on links or buttons inside the cell.
+      if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON') return;
+      editCell(el);
+    });
+
+    // ── Entity environmental detail panel (Database & Ingest > Entities) ─────
+    // Section definitions: each section has a title + an array of
+    // [field, label, type, options?, applicable?] tuples.
+    // Type is 'text' | 'number' | 'select'. options is for select (null if unused).
+    // applicable: array of bio_categories that should see this field.
+    //   undefined / null / [] → show for ALL bio_categories (defensive default).
+    // Bio-category filter is applied at render time in toggleEnvDetail.
+    const _P  = ['plantae'];
+    const _AV = ['invertebrate', 'vertebrate'];
+    const _FM = ['fungi', 'microbe'];
+    const _AV_FM = ['invertebrate', 'vertebrate', 'fungi', 'microbe'];
+    const _ALL5 = ['plantae', 'invertebrate', 'vertebrate', 'fungi', 'microbe'];
+    const ENV_SECTIONS = [
+      {
+        title: 'Temperature (°C)',
+        fields: [
+          ['min_temp_c',         'Plant min temp',  'number', null, _P],
+          ['max_temp_c',         'Plant max temp',  'number', null, _P],
+          ['thermal_min',        'Animal thermal min', 'number', null, _AV_FM],
+          ['thermal_max',        'Animal thermal max', 'number', null, _AV_FM],
+          ['optimal_temp_min',   'Optimal min',     'number', null, _P],
+          ['optimal_temp_max',   'Optimal max',     'number', null, _P],
+          ['tolerance_temp_min', 'Tolerance min',   'number', null, _P],
+          ['tolerance_temp_max', 'Tolerance max',   'number', null, _P],
+          ['favorable_temp_min', 'Favorable min',   'number', null, _AV_FM],
+          ['favorable_temp_max', 'Favorable max',   'number', null, _AV_FM],
+          ['thermal_kill_point', 'Thermal kill',    'number', null, _AV_FM]
+        ]
+      },
+      {
+        title: 'Humidity / precipitation',
+        fields: [
+          ['atmospheric_humidity',  'Atm humidity',        'number', null, _P],
+          ['optimal_humidity_min',  'Optimal humidity min','number', null, _P],
+          ['optimal_humidity_max',  'Optimal humidity max','number', null, _P],
+          ['favorable_humidity',    'Favorable humidity',  'number', null, _AV_FM],
+          ['min_precipitation_mm',  'Min precip mm',       'number', null, _P],
+          ['max_precipitation_mm',  'Max precip mm',       'number', null, _P],
+          ['optimal_precip_min',    'Optimal precip min',  'number', null, _P],
+          ['optimal_precip_max',    'Optimal precip max',  'number', null, _P],
+          ['leaf_wetness_hours',    'Leaf wetness h',      'number', null, _FM]
+        ]
+      },
+      {
+        title: 'Soil / pH',
+        fields: [
+          ['soil_texture',          'Soil texture',        'text',   null, _P],
+          ['soil_humidity',         'Soil humidity',       'number', null, _P],
+          ['soil_nutriments',       'Nutriments',          'number', null, _P],
+          ['soil_salinity',         'Salinity',            'number', null, _P],
+          ['optimal_soil_moisture', 'Optimal moisture',    'text',   null, _P],
+          ['optimal_soil_texture',  'Optimal soil texture','text',   null, _P],
+          ['ph_min',                'pH min',              'number', null, _P],
+          ['ph_max',                'pH max',              'number', null, _P],
+          ['optimal_ph_min',        'Optimal pH min',      'number', null, _P],
+          ['optimal_ph_max',        'Optimal pH max',      'number', null, _P],
+          ['soil_persistence_years','Soil persist (y)',    'number', null, _FM]
+        ]
+      },
+      {
+        title: 'Light',
+        fields: [
+          ['light_requirement', 'Light requirement', 'number', null, _P],
+          ['optimal_light',     'Optimal light',     'text',   null, _P]
+        ]
+      },
+      {
+        title: 'Range / regions',
+        fields: [
+          ['native_zones',      'Native zones',      'text', null, _P],
+          ['introduced_zones',  'Introduced zones',  'text', null, _P],
+          ['native_regions',    'Native regions',    'text', null, _ALL5],
+          ['invasive_regions',  'Invasive regions',  'text', null, _ALL5],
+          ['climate_zone',      'Climate zone',      'text', null, _P]
+        ]
+      },
+      {
+        title: 'Phenology / activity',
+        fields: [
+          ['growth_months',   'Growth months',   'text', null, _P],
+          ['bloom_months',    'Bloom months',    'text', null, _P],
+          ['fruit_months',    'Fruit months',    'text', null, _P],
+          ['activity_months', 'Activity months', 'text', null, _AV],
+          ['favorable_season','Favorable season','text', null, _AV_FM]
+        ]
+      },
+      {
+        title: 'Morphology (plants)',
+        fields: [
+          ['average_height_cm',  'Avg height cm',  'number', null, _P],
+          ['maximum_height_cm',  'Max height cm',  'number', null, _P],
+          ['spread_cm',          'Spread cm',      'number', null, _P],
+          ['row_spacing_cm',     'Row spacing cm', 'number', null, _P],
+          ['min_root_depth_cm',  'Root depth cm',  'number', null, _P],
+          ['growth_rate',        'Growth rate',    'text',   null, _P],
+          ['growth_habit',       'Growth habit',   'text',   null, _P],
+          ['growth_form',        'Growth form',    'text',   null, _P],
+          ['ligneous_type',      'Ligneous type',  'text',   null, _P]
+        ]
+      },
+      {
+        title: 'Crop traits',
+        fields: [
+          ['days_to_harvest',  'Days to harvest', 'number', null,           _P],
+          ['nitrogen_fixation','N fixation',       'number', null,           _P],
+          ['vegetable',        'Vegetable',        'select', ['', '0', '1'], _P],
+          ['edible',           'Edible',           'select', ['', '0', '1'], _P],
+          ['edible_part',      'Edible part',      'text',   null,           _P],
+          ['toxicity',         'Toxicity',         'text',   null,           _P]
+        ]
+      },
+      {
+        title: 'Animal / insect biology',
+        fields: [
+          ['life_cycle_type',   'Life cycle',    'text',   null, _AV],
+          ['voltinism',         'Voltinism',     'text',   null, _AV],
+          ['diet_breadth',      'Diet breadth',  'text',   null, _AV],
+          ['diet_type',         'Diet type',     'text',   null, _AV],
+          ['host_range',        'Host range',    'text',   null, _AV],
+          ['dispersal_range',   'Dispersal range','number',null, _AV],
+          ['pest_mobility',     'Mobility',      'text',   null, _AV],
+          ['larval_role',       'Larval role',   'text',   null, _AV],
+          ['adult_role',        'Adult role',    'text',   null, _AV],
+          ['migration_pattern', 'Migration',     'text',   null, _AV]
+        ]
+      },
+      {
+        title: 'Pathogen biology',
+        fields: [
+          ['disease_name',       'Disease name',      'text',   null,           _FM],
+          ['transmission_mode',  'Transmission',      'text',   null,           _FM],
+          ['transmission_vector','Vector',             'text',   null,           _FM],
+          ['pathogen_subtype',   'Subtype',            'text',   null,           _FM],
+          ['frac_group',         'FRAC group',         'text',   null,           _FM],
+          ['seed_borne',         'Seed-borne',         'select', ['', '0', '1'], _FM],
+          ['survival_structure', 'Survival structure', 'text',   null,           _FM]
+        ]
+      }
+    ];
+
+    async function toggleEnvDetail(id, btn) {
+      const entityRow = btn.closest('tr.entity-row');
+      const next = entityRow.nextElementSibling;
+      // Already expanded? Collapse.
+      if (next && next.classList.contains('env-detail-row') && parseInt(next.dataset.id, 10) === id) {
+        next.remove();
+        btn.classList.remove('expanded');
+        return;
+      }
+      // Fetch + render.
+      btn.classList.add('expanded');
+      btn.disabled = true;
+      try {
+        const res = await fetch(`/api/admin/review/entities/${id}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const e = data.item;
+        const detailRow = document.createElement('tr');
+        detailRow.className = 'env-detail-row';
+        detailRow.dataset.id = id;
+        const colCount = tabs[state.tab].columns.length;
+        const td = document.createElement('td');
+        td.colSpan = colCount;
+        const ALLOWED_BIO_CATEGORIES = ['plantae', 'invertebrate', 'vertebrate', 'fungi', 'microbe'];
+        const bc = e.bio_category;
+        if (!ALLOWED_BIO_CATEGORIES.includes(bc)) {
+          td.innerHTML = `<div style="padding:16px;color:var(--earth-700,#78350f);font-style:italic">` +
+            `No environmental fields apply to entities with bio_category=&#39;${esc(bc || '(unset)')}&#39;. ` +
+            `Set the entity&#39;s bio_category to plantae / invertebrate / vertebrate / fungi / microbe to see relevant fields.</div>`;
+        } else {
+          td.innerHTML = ENV_SECTIONS.map(section => {
+            const visibleFields = section.fields.filter(([, , , , applicable]) => {
+              if (!applicable || applicable.length === 0) return true; // defensive default
+              return applicable.includes(bc);
+            });
+            if (visibleFields.length === 0) return '';
+            const cells = visibleFields.map(([field, label, type, options]) => {
+              const val = e[field];
+              const isEmpty = val == null || val === '';
+              const display = isEmpty ? '+ add' : esc(val);
+              const selectAttr = options ? ` data-edit-select='${esc(JSON.stringify(options))}'` : '';
+              return `<div class="env-field">
+              <span class="label">${esc(label)}</span>
+              <span class="value editable ${isEmpty ? 'empty' : ''}"
+                    data-edit-tab="entities" data-edit-id="${id}"
+                    data-edit-field="${field}" data-edit-type="${type}"${selectAttr}>${display}</span>
+            </div>`;
+            }).join('');
+            return `<div class="env-section">
+            <h4>${esc(section.title)}</h4>
+            <div class="env-grid">${cells}</div>
+          </div>`;
+          }).join('');
+        }
+        detailRow.appendChild(td);
+        entityRow.parentNode.insertBefore(detailRow, entityRow.nextSibling);
+      } catch (err) {
+        toast(`Failed to load entity: ${err.message}`, true);
+        btn.classList.remove('expanded');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ── Add a source ─────────────────────────────────────────────────────────
+    async function addSource() {
+      const title = prompt('Source title (required):');
+      if (!title || !title.trim()) return;
+      const authors = prompt('Authors (e.g. "Pedigo, L.P., Rice, R.M."):', '') || '';
+      const year = prompt('Year (optional):', '') || '';
+      const source_type = prompt('Source type — book / paper / extension / report / preprint / website (optional):', '') || '';
+      const url = prompt('URL or DOI (optional):', '') || '';
+      const license = prompt('License — CC-BY / CC-BY-SA / proprietary / etc. (optional):', '') || '';
+      try {
+        const res = await fetch('/api/admin/review/sources', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: title.trim(), authors, year, source_type, url, license })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        toast(`Created source #${data.id} (slug: ${data.created?.slug || '—'})`);
+        if (state.tab === 'sources') load();
+      } catch (err) {
+        toast(`Error: ${err.message}`, true);
+      }
+    }
+
+    // ── Centralized navigation lifecycle ─────────────────────────────────────
+    // Single source of truth for "the navigation state changed; refresh everything that depends on it."
+    // All navigation handlers (setTab, jumpToStagingWithScope, reviewSourceFromQueue,
+    // jumpToStage, viewInDatabase, popstate) must call this — never call individual render fns ad-hoc.
+    function applyNav() {
+      if (typeof renderTopTabs === 'function') renderTopTabs();
+      if (typeof renderTabs === 'function') renderTabs();
+      if (typeof renderIngestPicker === 'function') renderIngestPicker();
+      if (typeof renderHeader === 'function') renderHeader();
+      if (typeof renderFilterBar === 'function') renderFilterBar();
+      // Recompute strip + banner on every nav so .visible never goes stale
+      progressStrip.render();
+      if (typeof autoAdvance !== 'undefined') autoAdvance.evaluate();
+      return load();
+    }
+
+    // Race counter: ensures an out-of-order fetch can't overwrite a newer load's result.
+    let activeLoadId = 0;
+
+    // ── Render ────────────────────────────────────────────────────────────────
+    function renderTopTabs() {
+      $('top-tabs').innerHTML = Object.entries(tabGroups).map(([key, g]) => `
+        <button class="top-tab-btn ${state.topTab === key ? 'active' : ''}" onclick="setTopTab('${key}')">
+          ${esc(g.label)}${infoIcon('top:' + key)}
+        </button>
+      `).join('');
+      $('top-tab-desc').textContent = tabGroups[state.topTab]?.desc || '';
+    }
+
+    function renderTabs() {
+      const subs = tabGroups[state.topTab]?.subs || [];
+      $('tabs').innerHTML = subs.map(key => {
+        const t = tabs[key];
+        if (!t) return '';
+        return `<button class="tab-btn ${state.tab === key ? 'active' : ''}" onclick="setTab('${key}')">${esc(t.label)}${infoIcon('sub:' + key)}</button>`;
+      }).join('');
+    }
+
+    // ── Ingest source picker ─────────────────────────────────────────────────
+    async function loadIngestSources() {
+      if (ingestSourcesList.length > 0) return;
+      try {
+        const res = await fetch('/api/admin/review/ingest-sources');
+        const d = await res.json();
+        ingestSourcesList = d.items || [];
+      } catch (err) {
+        console.warn('Failed to load ingest sources:', err);
+      }
+    }
+
+    function renderIngestPicker() {
+      const el = $('ingest-picker');
+      if (!el) return;
+      if (state.topTab !== 'ingest') {
+        el.classList.add('hidden');
+        return;
+      }
+      el.classList.remove('hidden');
+      if (!state.ingestSourceId) {
+        el.innerHTML = `<span class="source-meta">Select a paper from the Queue tab to drill into Staging → Entity Traits / Claims / Entities.</span>`;
+        return;
+      }
+      // When a source is selected the merged progress-strip card shows the
+      // "Reviewing: <title>" header — no separate banner needed here.
+      el.innerHTML = '';
+    }
+
+    async function setIngestSource(rawId) {
+      if (typeof autoAdvance !== 'undefined') autoAdvance.dismiss();
+      const id = (rawId === null || rawId === '' || rawId === 'null') ? null : parseInt(rawId, 10);
+      state.ingestSourceId = Number.isFinite(id) ? id : null;
+      state.page = 1;
+      state.selectedIds.clear();
+      updateBulkBar();
+      clearStagingSelection();
+      urlState.push('push');
+      renderIngestPicker();
+      await progressStrip.fetch();
+      progressStrip.render();
+      load();
+    }
+
+    window.setReviewSource = async function(sourceId) {
+      await setIngestSource(sourceId);
+    };
+
+    window.reviewSourceFromQueue = function(sourceId) {
+      setIngestSource(sourceId).then(() => {
+        state.tab = 'staging';
+        state.page = 1;
+        urlState.push('push');
+        applyNav();
+      });
+    };
+
+    // ── Claims + Entity Traits expand-in-place ────────────────────────────────
+
+    window.toggleClaimExpand = function(claimId, toggleEl) {
+      const tr = document.querySelector(`#rows tr[data-id="${claimId}"]`);
+      if (!tr) return;
+      const next = tr.nextElementSibling;
+      if (next && next.classList.contains('claim-expanded') && next.dataset.parentId === String(claimId)) {
+        next.remove();
+        toggleEl.innerHTML = '&#9658;';
+        return;
+      }
+      let data;
+      try {
+        data = JSON.parse(decodeURIComponent(escape(atob(tr.dataset.claimRow))));
+      } catch (err) {
+        console.error('toggleClaimExpand: cannot decode', err); return;
+      }
+      const panel = document.createElement('tr');
+      panel.className = 'claim-expanded';
+      panel.dataset.parentId = String(claimId);
+      panel.innerHTML = `<td colspan="${tr.children.length}" style="background:rgba(47,106,49,0.04);padding:14px 18px;border-bottom:2px solid var(--nature-200,#c5dfc6)">${renderClaimDetail(data)}</td>`;
+      tr.after(panel);
+      toggleEl.innerHTML = '&#9660;';
+    };
+
+    window.toggleTraitExpand = function(traitId, toggleEl) {
+      const tr = document.querySelector(`#rows tr[data-id="${traitId}"]`);
+      if (!tr) return;
+      const next = tr.nextElementSibling;
+      if (next && next.classList.contains('trait-expanded') && next.dataset.parentId === String(traitId)) {
+        next.remove();
+        toggleEl.innerHTML = '&#9658;';
+        return;
+      }
+      let data;
+      try {
+        data = JSON.parse(decodeURIComponent(escape(atob(tr.dataset.traitRow))));
+      } catch (err) {
+        console.error('toggleTraitExpand: cannot decode', err); return;
+      }
+      const panel = document.createElement('tr');
+      panel.className = 'trait-expanded';
+      panel.dataset.parentId = String(traitId);
+      panel.innerHTML = `<td colspan="${tr.children.length}" style="background:rgba(47,106,49,0.04);padding:14px 18px;border-bottom:2px solid var(--nature-200,#c5dfc6)">${renderTraitDetail(data)}</td>`;
+      tr.after(panel);
+      toggleEl.innerHTML = '&#9660;';
+    };
+
+    function renderCriticsTrail(criticVerdictsString) {
+      const verdicts = (criticVerdictsString || '').split('\n').filter(Boolean);
+      if (!verdicts.length) return '<div style="color:#aaa;font-style:italic;font-size:12px">no critic verdicts available</div>';
+      return verdicts.map(line => {
+        const [name, verdict, reasoning, confidence, strength] = line.split('|');
+        if (!name) return '';
+        const conf = confidence && confidence !== '' ? ` <span style="color:var(--earth-700)">(conf ${parseFloat(confidence).toFixed(2)})</span>` : '';
+        const str = strength && strength !== '' ? ` <span style="color:var(--earth-700)">[${esc(strength)}]</span>` : '';
+        const cls = verdict === 'plausible' ? 'human_verified' : verdict === 'implausible' ? 'human_rejected' : verdict === 'uncertain' ? 'disputed' : 'ai_reviewed';
+        return `<div style="margin:4px 0">
+          <span class="pill ${cls}">${esc(name)}: ${esc(verdict)}</span>${conf}${str}
+          ${reasoning ? `<div style="margin:2px 0 0 8px;color:var(--earth-700);font-style:italic;font-size:12px">&#8212; ${esc(reasoning)}</div>` : ''}
+        </div>`;
+      }).join('');
+    }
+
+    // Build the &search= fragment for PDF.js viewer iframes. Uses first ~60
+    // chars (trimmed to a word boundary). PDF.js viewer reads plain text after
+    // &search= — no quote-wrapping needed.
+    function pdfSearchParam(quote) {
+      if (!quote) return '';
+      let q = String(quote).trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, '');
+      if (!q) return '';
+      const cut = Math.min(60, q.length);
+      let snippet = q.slice(0, cut);
+      const lastSpace = snippet.lastIndexOf(' ');
+      if (lastSpace > 30) snippet = snippet.slice(0, lastSpace);
+      return snippet ? `&search=${encodeURIComponent(snippet)}` : '';
+    }
+
+    // Build a full PDF.js viewer URL wrapping the raw PDF endpoint.
+    function pdfjsUrl(sourceId, page, searchPart) {
+      const fileUrl = encodeURIComponent('/api/admin/literature/' + sourceId + '/pdf');
+      // Mozilla viewer fragment params: phrase=true (whole phrase, not split words),
+      // highlightAll=true (mark every match, not just first), pagemode=none (no sidebar by default).
+      return `/pdfjs/web/viewer.html?file=${fileUrl}#page=${page}${searchPart}&highlightAll=true&phrase=true&pagemode=none`;
+    }
+
+    function renderPdfBlock(data) {
+      if (!data.source_has_pdf || !data.source_id) {
+        return `<div>
+          <div style="font-size:11px;font-weight:600;color:var(--earth-700);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Source PDF</div>
+          <div style="color:#aaa;font-style:italic;font-size:12px">no PDF available for this source</div>
+        </div>`;
+      }
+      const dataB64 = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+      const searchPart = pdfSearchParam(data.source_quote);
+      return `<div style="display:flex;flex-direction:column;min-height:0">
+        <div style="font-size:11px;font-weight:600;color:var(--earth-700);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;flex:0 0 auto">Source PDF (page ${esc(String(data.source_page || '?'))})</div>
+        <div style="position:relative;flex:1 1 auto;min-height:500px;border:1px solid rgba(47,106,49,0.2);border-radius:4px;overflow:hidden;background:white">
+          <iframe src="${pdfjsUrl(data.source_id, data.source_page || 1, searchPart)}" style="width:100%;height:100%;border:0;display:block" title="Source page"></iframe>
+          <button onclick="enlargeSourcePdf(${data.source_id}, ${data.source_page || 1}, '${dataB64}')" style="position:absolute;top:6px;right:6px;background:rgba(47,106,49,0.9);color:white;border:none;border-radius:3px;padding:3px 8px;font-size:11px;cursor:pointer">&#9645; Enlarge</button>
+        </div>
+      </div>`;
+    }
+
+    function renderClaimDetail(data, opts = {}) {
+      const isLightbox = !!opts.lightbox;
+      const stagingLink = data.staging_id
+        ? `<a href="#" onclick="viewStagingFromClaim(${data.staging_id});return false;" style="color:var(--earth-700)">View in Verify &#8594;</a>`
+        : '';
+      const summaryRows = [
+        ['Subject',  data.subject],
+        ['Object',   data.object],
+        ['Relation', data.relation],
+        ['Region',   data.region]
+      ].filter(([, v]) => v).map(([k, v]) =>
+        `<tr><td style="font-weight:600;color:var(--earth-700);padding-right:12px;width:1%;white-space:nowrap">${k}</td><td>${esc(String(v))}</td></tr>`
+      ).join('');
+      const actions = `<div style="margin-top:12px;display:flex;gap:8px">
+        <button onclick="action(${data.id}, 'accept', this)" style="padding:6px 14px;background:var(--nature-700,#2f6a31);color:white;border:none;border-radius:4px;cursor:pointer">&#10003; Accept (&#8594; human_verified)</button>
+        <button onclick="action(${data.id}, 'reject', this)" style="padding:6px 14px;background:#c0392b;color:white;border:none;border-radius:4px;cursor:pointer">&#10005; Reject (&#8594; human_rejected)</button>
+        <button onclick="action(${data.id}, 'flag', this)" style="padding:6px 14px;background:#e6b800;color:#333;border:none;border-radius:4px;cursor:pointer">&#9872; Flag</button>
+      </div>`;
+      const gridCols = isLightbox
+        ? 'minmax(0,2fr) minmax(0,1fr)'
+        : 'minmax(0,2fr) minmax(0,1fr) minmax(0,1.5fr)';
+      const pdfCol = isLightbox ? '' : renderPdfBlock(data);
+      return `
+        <div style="display:grid;grid-template-columns:${gridCols};gap:24px${isLightbox ? ';flex:1;min-height:0' : ''}">
+          <div${isLightbox ? ' style="overflow-y:auto"' : ''}>
+            <div style="font-size:11px;font-weight:600;color:var(--earth-700);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Source Quote${data.source_page ? ` (page ${data.source_page})` : ''}</div>
+            <div style="margin-bottom:14px;padding:8px;background:white;border-radius:4px;font-style:italic;line-height:1.4;font-size:13px">${esc(data.source_quote || '(no quote)')}</div>
+            <div style="font-size:11px;font-weight:600;color:var(--earth-700);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Claim Summary</div>
+            <table style="font-size:12px;width:100%">${summaryRows}</table>
+            ${data.staging_id ? `<div style="margin-top:8px;font-size:11px">From staging row #${data.staging_id} &middot; ${stagingLink}</div>` : ''}
+          </div>
+          <div${isLightbox ? ' style="overflow-y:auto"' : ''}>
+            <div style="font-size:11px;font-weight:600;color:var(--earth-700);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Critic Verdicts</div>
+            ${renderCriticsTrail(data.critic_verdicts)}
+          </div>
+          ${pdfCol}
+        </div>
+        ${actions}
+      `;
+    }
+
+    function renderTraitDetail(data, opts = {}) {
+      const isLightbox = !!opts.lightbox;
+      const stagingLink = data.staging_id
+        ? `<a href="#" onclick="viewStagingFromClaim(${data.staging_id});return false;" style="color:var(--earth-700)">View in Verify &#8594;</a>`
+        : '';
+      const valueDisplay =
+        data.value_numeric != null ? esc(String(data.value_numeric)) :
+        data.value_text ? esc(data.value_text) :
+        data.value_json ? `<code>${esc(data.value_json)}</code>` : '<span style="color:#aaa">&#8212;</span>';
+      const summaryRows = [
+        ['Entity',  data.entity_scientific_name],
+        ['Trait',   data.trait_name],
+        ['Value',   valueDisplay],
+        ['Unit',    data.unit],
+        ['Region',  data.region]
+      ].filter(([, v]) => v).map(([k, v]) =>
+        `<tr><td style="font-weight:600;color:var(--earth-700);padding-right:12px;width:1%;white-space:nowrap">${k}</td><td>${(typeof v === 'string' && v.startsWith('<')) ? v : esc(String(v))}</td></tr>`
+      ).join('');
+      const actions = `<div style="margin-top:12px;display:flex;gap:8px">
+        <button onclick="actionTrait(${data.id}, 'accept', this)" style="padding:6px 14px;background:var(--nature-700,#2f6a31);color:white;border:none;border-radius:4px;cursor:pointer">&#10003; Accept (&#8594; human_verified)</button>
+        <button onclick="actionTrait(${data.id}, 'reject', this)" style="padding:6px 14px;background:#c0392b;color:white;border:none;border-radius:4px;cursor:pointer">&#10005; Reject (&#8594; human_rejected)</button>
+      </div>`;
+      const gridCols = isLightbox
+        ? 'minmax(0,2fr) minmax(0,1fr)'
+        : 'minmax(0,2fr) minmax(0,1fr) minmax(0,1.5fr)';
+      const pdfCol = isLightbox ? '' : renderPdfBlock(data);
+      return `
+        <div style="display:grid;grid-template-columns:${gridCols};gap:24px${isLightbox ? ';flex:1;min-height:0' : ''}">
+          <div${isLightbox ? ' style="overflow-y:auto"' : ''}>
+            <div style="font-size:11px;font-weight:600;color:var(--earth-700);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Source Quote${data.source_page ? ` (page ${data.source_page})` : ''}</div>
+            <div style="margin-bottom:14px;padding:8px;background:white;border-radius:4px;font-style:italic;line-height:1.4;font-size:13px">${esc(data.source_quote || '(no quote)')}</div>
+            <div style="font-size:11px;font-weight:600;color:var(--earth-700);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Trait Summary</div>
+            <table style="font-size:12px;width:100%">${summaryRows}</table>
+            ${data.staging_id ? `<div style="margin-top:8px;font-size:11px">From staging row #${data.staging_id} &middot; ${stagingLink}</div>` : ''}
+          </div>
+          <div${isLightbox ? ' style="overflow-y:auto"' : ''}>
+            <div style="font-size:11px;font-weight:600;color:var(--earth-700);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Critic Verdicts</div>
+            ${renderCriticsTrail(data.critic_verdicts)}
+          </div>
+          ${pdfCol}
+        </div>
+        ${actions}
+      `;
+    }
+
+    window.viewStagingFromClaim = function(stagingId) {
+      state.topTab = 'ingest';
+      state.tab = 'staging';
+      state.page = 1;
+      state.filters.staging = { ...state.filters.staging, search: String(stagingId) };
+      if (typeof urlState !== 'undefined') urlState.push('push');
+      if (typeof applyNav === 'function') applyNav();
+    };
+
+    window.actionTrait = async function(traitId, action, btn) {
+      const url = `/api/admin/review/entity-traits/${traitId}`;
+      const reviewStatus = action === 'accept' ? 'human_verified' : action === 'reject' ? 'human_rejected' : 'disputed';
+      try {
+        const res = await fetch(url, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ review_status: reviewStatus })
+        });
+        if (!res.ok) throw new Error(await res.text().catch(() => 'unknown'));
+        // Auto-close any open lightbox so the partner returns to the refreshed table
+        document.querySelectorAll('.pdf-overlay').forEach(o => o.remove());
+        if (typeof load === 'function') await load();
+      } catch (err) {
+        alert('Failed to update trait: ' + err.message);
+      }
+    };
+
+    window.toggleStagingExpand = function(stagingId, toggleEl) {
+      const tr = document.querySelector(`#rows tr[data-id="${stagingId}"]`);
+      if (!tr) { console.warn('toggleStagingExpand: row not found', stagingId); return; }
+      const next = tr.nextElementSibling;
+      // If the very next row is already the expanded panel for this row, close it.
+      if (next && next.classList.contains('staging-expanded') && next.dataset.parentId === String(stagingId)) {
+        next.remove();
+        toggleEl.innerHTML = '&#9658;';
+        return;
+      }
+      // Decode row data from the DOM attribute — no dependency on state.lastResponse cache.
+      let data;
+      try {
+        const raw = decodeURIComponent(escape(atob(tr.dataset.stagingRow)));
+        data = JSON.parse(raw);
+      } catch (err) {
+        console.error('toggleStagingExpand: cannot decode row data', err);
+        return;
+      }
+      const panel = document.createElement('tr');
+      panel.className = 'staging-expanded';
+      panel.dataset.parentId = String(stagingId);
+      const colspan = tr.children.length;
+      panel.innerHTML = `<td colspan="${colspan}" style="background:rgba(47,106,49,0.04);padding:14px 18px;border-bottom:2px solid var(--nature-200,#c5dfc6)">${renderStagingDetail(data)}</td>`;
+      panel.dataset.stagingIdDetail = String(stagingId);
+      tr.after(panel);
+      toggleEl.innerHTML = '&#9660;';
+      // Load and stamp any existing per-field corrections
+      setTimeout(() => loadAndApplyCorrections(stagingId), 0);
+    };
+
+    function renderStagingDetail(s, opts = {}) {
+      const isLightbox = !!opts.lightbox;
+      // Parse payload JSON for display
+      let payload = {};
+      try { payload = typeof s.payload === 'string' ? JSON.parse(s.payload) : (s.payload || {}); } catch { payload = { _raw: s.payload }; }
+      const reviewableFields = Object.entries(payload).filter(([k, v]) => !k.startsWith('_') && v !== null && v !== '');
+
+      // Helper: detect entity-name fields that get scientific-name autocomplete
+      const isEntityField = k => /^(subject|object)_(scientific_name|common_name|name)$/.test(k) || k === 'scientific_name' || k === 'pest_scientific_name' || k === 'crop';
+
+      // Build per-field interactive rows
+      const payloadRows = reviewableFields.map(([k, v]) => {
+        const valueStr = typeof v === 'object' ? JSON.stringify(v) : String(v);
+        const isEntity = isEntityField(k);
+        const dlId = `dl-${s.id}-${k}`;
+        const focusHandler = isEntity
+          ? `this.style.border='1px solid rgba(47,106,49,0.4)';this.style.background='white';loadEntitySuggestions(this,'${dlId}')`
+          : `this.style.border='1px solid rgba(47,106,49,0.4)';this.style.background='white'`;
+        const inputHandler = isEntity ? `loadEntitySuggestions(this,'${dlId}')` : '';
+        return `<tr data-field-path="${esc(k)}">
+          <td style="font-weight:600;padding:2px 0 2px 0;color:var(--earth-700);white-space:nowrap;vertical-align:middle;padding-right:10px;width:1%">${esc(k)}</td>
+          <td style="vertical-align:middle">
+            <input class="field-edit" data-staging-id="${s.id}" data-field-path="${esc(k)}"
+                   ${isEntity ? `list="${dlId}"` : ''}
+                   value="${esc(valueStr)}"
+                   style="width:100%;padding:3px 6px;border:1px solid transparent;background:transparent;font-size:12px;border-radius:3px;box-sizing:border-box"
+                   onfocus="${focusHandler}"
+                   ${inputHandler ? `oninput="${inputHandler}"` : ''}
+                   onblur="commitFieldEdit(this);this.style.border='1px solid transparent';this.style.background='transparent'" />
+            ${isEntity ? `<datalist id="${dlId}"></datalist>` : ''}
+          </td>
+          <td style="width:1%;white-space:nowrap;padding-left:6px;vertical-align:middle">
+            <span class="field-correction-pill" data-field-path="${esc(k)}" style="display:none;font-size:10px;padding:2px 6px;border-radius:3px;margin-right:4px;vertical-align:middle"></span>
+            <button onclick="markFieldCorrect(${s.id},'${esc(k)}')" title="Field is correct as-is"
+                    style="padding:2px 7px;background:transparent;border:1px solid var(--nature-700,#2f6a31);color:var(--nature-700,#2f6a31);border-radius:3px;cursor:pointer;font-size:11px">&#10003;</button>
+            <button onclick="markFieldRejected(${s.id},'${esc(k)}')" title="Field value is wrong"
+                    style="margin-left:3px;padding:2px 7px;background:transparent;border:1px solid #c0392b;color:#c0392b;border-radius:3px;cursor:pointer;font-size:11px">&#10005;</button>
+          </td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="3" style="color:#aaa;font-style:italic">empty payload</td></tr>';
+
+      // Parse critic verdicts (newline-separated, pipe-delimited fields)
+      const critics = (s.critic_verdicts || '').split('\n').filter(Boolean).map(line => {
+        const parts = line.split('|');
+        const name = parts[0] || '';
+        const verdict = parts[1] || '';
+        const reasoning = parts[2] || '';
+        const confidence = parts[3] || '';
+        const strength = parts[4] || '';
+        if (!name) return '';
+        const conf = confidence ? ` <span style="color:var(--earth-700)">(conf ${parseFloat(confidence).toFixed(2)})</span>` : '';
+        const str = strength ? ` <span style="color:var(--earth-700)">[${esc(strength)}]</span>` : '';
+        const cls = verdict === 'plausible' ? 'human_verified' : verdict === 'implausible' ? 'human_rejected' : verdict === 'uncertain' ? 'disputed' : 'ai_reviewed';
+        return `<div style="margin:4px 0">
+          <span class="pill ${cls}">${esc(name)}: ${esc(verdict)}</span>${conf}${str}
+          ${reasoning ? `<div style="margin:2px 0 0 8px;color:var(--earth-700);font-style:italic;font-size:12px">&#8212; ${esc(reasoning)}</div>` : ''}
+        </div>`;
+      }).join('') || '<div style="color:#aaa;font-style:italic;font-size:12px">no critic verdicts yet</div>';
+
+      // Promoted destination block
+      const dest = s.promoted_destination;
+      const destBlock = dest
+        ? `<div style="margin:8px 0;padding:6px 10px;background:rgba(47,106,49,0.10);border-left:3px solid var(--nature-700,#2f6a31);border-radius:3px">
+             <strong>Promoted</strong> &#8212; now live as <code>${esc(dest.table)}</code> <code>#${dest.id}</code>
+             <a href="#" onclick="viewInDatabase('${esc(dest.table)}', ${dest.id});return false;" style="margin-left:8px;color:var(--nature-700)">View in Database &#8594;</a>
+           </div>`
+        : '';
+
+      // Inline action buttons (whole-row Accept/Reject/Flag still available)
+      const actions = `<div id="actions-bar-${s.id}" style="margin-top:12px;display:flex;gap:8px;align-items:center">
+        <button id="accept-btn-${s.id}" onclick="actionStaging(${s.id}, 'accept', this)" style="padding:6px 14px;background:var(--nature-700,#2f6a31);color:white;border:none;border-radius:4px;cursor:pointer">&#10003; Accept</button>
+        <button onclick="actionStagingPrompt(${s.id}, 'reject', this)" style="padding:6px 14px;background:#c0392b;color:white;border:none;border-radius:4px;cursor:pointer">&#10005; Reject</button>
+        <button onclick="actionStagingPrompt(${s.id}, 'flag', this)"   style="padding:6px 14px;background:#e6b800;color:#333;border:none;border-radius:4px;cursor:pointer">&#9872; Flag</button>
+        <span id="auto-promote-banner-${s.id}" style="display:none;font-size:12px;padding:4px 10px;background:rgba(47,106,49,0.12);color:var(--nature-700,#2f6a31);border-radius:4px"></span>
+      </div>`;
+
+      const sDataB64 = btoa(unescape(encodeURIComponent(JSON.stringify(s))));
+      let pdfBlock;
+      if (isLightbox) {
+        pdfBlock = '';
+      } else if (s.source_has_pdf && s.source_id) {
+        const sSearchPart = pdfSearchParam(s.source_quote);
+        pdfBlock = `<div style="display:flex;flex-direction:column;min-height:0">
+            <div style="font-size:11px;font-weight:600;color:var(--earth-700);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;flex:0 0 auto">Source PDF (page ${esc(String(s.source_page || '?'))})</div>
+            <div style="position:relative;flex:1 1 auto;min-height:500px;border:1px solid rgba(47,106,49,0.2);border-radius:4px;overflow:hidden;background:white">
+              <iframe src="${pdfjsUrl(s.source_id, s.source_page || 1, sSearchPart)}"
+                      style="width:100%;height:100%;border:0;display:block" title="Source page ${esc(String(s.source_page || ''))}"></iframe>
+              <button onclick="enlargeSourcePdf(${s.source_id}, ${s.source_page || 1}, '${sDataB64}')"
+                      style="position:absolute;top:6px;right:6px;background:rgba(47,106,49,0.9);color:white;border:none;border-radius:3px;padding:3px 8px;font-size:11px;cursor:pointer">&#x26F6; Enlarge</button>
+            </div>
+          </div>`;
+      } else {
+        pdfBlock = `<div>
+            <div style="font-size:11px;font-weight:600;color:var(--earth-700);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Source PDF</div>
+            <div style="color:#aaa;font-style:italic;font-size:12px">no PDF available for this source</div>
+          </div>`;
+      }
+
+      const gridCols = isLightbox
+        ? 'minmax(0,2fr) minmax(0,1fr)'
+        : 'minmax(0,2fr) minmax(0,1fr) minmax(0,1.5fr)';
+
+      return `
+        <div style="display:grid;grid-template-columns:${gridCols};gap:24px${isLightbox ? ';flex:1;min-height:0' : ''}">
+          <div${isLightbox ? ' style="overflow-y:auto"' : ''}>
+            <div style="font-size:11px;font-weight:600;color:var(--earth-700);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Source Quote${s.source_page ? ` (page ${esc(String(s.source_page))})` : ''}</div>
+            <div style="margin-bottom:14px;padding:8px 10px;background:white;border-radius:4px;font-style:italic;line-height:1.5;font-size:13px;border:1px solid var(--nature-200,#c5dfc6)">${esc(s.source_quote || s.extracted_claim || '(no quote)')}</div>
+            <div style="font-size:11px;font-weight:600;color:var(--earth-700);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Extracted Payload &#8212; click &#10003; if correct, &#10005; if wrong, or edit inline</div>
+            <table style="font-size:12px;width:100%;border-collapse:collapse">${payloadRows}</table>
+          </div>
+          <div${isLightbox ? ' style="overflow-y:auto"' : ''}>
+            <div style="font-size:11px;font-weight:600;color:var(--earth-700);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Critic Verdicts</div>
+            ${critics}
+          </div>
+          ${pdfBlock}
+        </div>
+        ${destBlock}
+        ${actions}
+      `;
+    }
+
+    window.enlargeSourcePdf = function(sourceId, page, dataB64) {
+      const existing = document.querySelector('.pdf-overlay');
+      if (existing) existing.remove();
+
+      let data = null;
+      if (dataB64) {
+        try { data = JSON.parse(decodeURIComponent(escape(atob(dataB64)))); } catch (err) { console.warn('enlargeSourcePdf: cannot decode data', err); }
+      }
+
+      const overlay = document.createElement('div');
+      overlay.className = 'pdf-overlay';
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;flex-direction:column';
+
+      const topBar = `
+        <div style="padding:8px 16px;background:white;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(0,0,0,0.1)">
+          <strong>Source — page ${page}</strong>
+          ${data && data.source_title ? `<span style="color:var(--earth-700);font-size:12px;font-weight:normal">· ${esc(data.source_title)}</span>` : ''}
+          <button onclick="this.closest('.pdf-overlay').remove()" style="margin-left:auto;padding:4px 12px;background:var(--nature-700,#2f6a31);color:white;border:none;border-radius:3px;cursor:pointer">Close ✕</button>
+        </div>`;
+
+      // Detect row type and render the corresponding detail content without the embedded PDF
+      let sidebarHTML = '';
+      if (data) {
+        const isStaging = data.payload != null;
+        const isClaim   = !isStaging && (!!data.relation || !!data.subject);
+        const isTrait   = !isStaging && !isClaim && !!data.trait_name;
+        if (isStaging)    sidebarHTML = renderStagingDetail(data, { lightbox: true });
+        else if (isClaim) sidebarHTML = renderClaimDetail(data, { lightbox: true });
+        else if (isTrait) sidebarHTML = renderTraitDetail(data, { lightbox: true });
+      }
+
+      // Layout: sidebar LEFT (min 480px, ~1fr), PDF RIGHT (~1.5fr)
+      const lightboxSearchPart = data && data.source_quote ? pdfSearchParam(data.source_quote) : '';
+      const body = sidebarHTML
+        ? `<div style="flex:1;display:grid;grid-template-columns:minmax(480px,1fr) minmax(0,1.5fr);gap:0;min-height:0">
+             <div style="background:white;overflow-y:auto;padding:16px;border-right:1px solid rgba(0,0,0,0.1);display:flex;flex-direction:column">${sidebarHTML}</div>
+             <iframe src="${pdfjsUrl(sourceId, page, lightboxSearchPart)}" style="width:100%;height:100%;border:0;background:white" title="Source PDF"></iframe>
+           </div>`
+        : `<iframe src="${pdfjsUrl(sourceId, page, lightboxSearchPart)}" style="flex:1;width:100%;border:0;background:white" title="Source PDF"></iframe>`;
+
+      overlay.innerHTML = topBar + body;
+      overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+      document.body.appendChild(overlay);
+
+      // After mounting, sync field-correction pills in the lightbox to existing state for staging rows
+      if (data && data.id && data.payload != null) {
+        setTimeout(() => loadAndApplyCorrections(data.id), 0);
+      }
+    };
+
+    // renderLightboxSidebar removed — enlargeSourcePdf now delegates to
+    // renderStagingDetail / renderClaimDetail / renderTraitDetail with opts.lightbox=true.
+
+    window.viewInDatabase = function(table, id) {
+      const tabKey = table === 'claims' ? 'claims' : table === 'entity_traits' ? 'entity_traits' : 'entities';
+      state.topTab = 'database';
+      state.tab = tabKey;
+      state.page = 1;
+      state.selectedIds.clear();
+      if (state.filters[tabKey]) state.filters[tabKey].id = String(id);
+      urlState.push('push');
+      applyNav();
+    };
+
+    // -----------------------------------------------------------------------
+    // Per-field correction helpers (migration 038 / staging_field_corrections)
+    // -----------------------------------------------------------------------
+
+    const _entitySuggestionTimers = new Map();
+
+    window.loadEntitySuggestions = function(input, datalistId) {
+      const q = input.value;
+      const prev = _entitySuggestionTimers.get(datalistId);
+      if (prev) clearTimeout(prev);
+      _entitySuggestionTimers.set(datalistId, setTimeout(async () => {
+        try {
+          const res = await fetch(`/api/admin/autocomplete/biota?q=${encodeURIComponent(q)}`);
+          const data = await res.json();
+          const dl = document.getElementById(datalistId);
+          if (!dl) return;
+          const items = (data.items || []).slice(0, 25);
+          dl.innerHTML = items.map(it => `<option value="${esc(it.scientific_name || it.name || String(it))}"></option>`).join('');
+        } catch { /* silent */ }
+      }, 200));
+    };
+
+    window.commitFieldEdit = async function(input) {
+      const stagingId = parseInt(input.dataset.stagingId, 10);
+      const fieldPath = input.dataset.fieldPath;
+      const newValue = input.value;
+      // Recover original value from data-staging-row on the parent table row
+      const tr = document.querySelector(`#rows tr[data-id="${stagingId}"]`);
+      if (!tr) return;
+      let payloadObj = {};
+      try {
+        const raw = decodeURIComponent(escape(atob(tr.dataset.stagingRow)));
+        const rowData = JSON.parse(raw);
+        payloadObj = typeof rowData.payload === 'string' ? JSON.parse(rowData.payload) : (rowData.payload || {});
+      } catch { /* parse failed — compare will differ, which is fine */ }
+      const original = String(payloadObj[fieldPath] ?? '');
+      if (newValue === original) return;
+      await postFieldCorrection(stagingId, fieldPath, 'edited', newValue);
+    };
+
+    window.markFieldCorrect = async function(stagingId, fieldPath) {
+      await postFieldCorrection(stagingId, fieldPath, 'correct');
+    };
+
+    window.markFieldRejected = function(stagingId, fieldPath) {
+      // Swap action buttons for an inline note input instead of immediately POSTing.
+      // Partner can type a reason (Enter to submit) or hit × to cancel.
+      const escaped = cssEscapeAttr(fieldPath);
+      const trs = document.querySelectorAll(`tr[data-field-path="${escaped}"]`);
+      if (!trs.length) return;
+      trs.forEach(tr => {
+        const actionCell = tr.querySelector('td:last-child');
+        if (!actionCell) return;
+        const noteId = `reject-note-${stagingId}-${escaped}`;
+        actionCell.innerHTML =
+          `<input type="text" id="${noteId}"` +
+          ` placeholder="Optional: why wrong? (Enter to skip)"` +
+          ` style="padding:3px 6px;border:1px solid #c0392b;border-radius:3px;font-size:11px;width:190px;vertical-align:middle"` +
+          ` onkeydown="handleRejectNoteKey(event,${stagingId},'${esc(fieldPath)}')" />` +
+          ` <button onclick="submitRejectNote(${stagingId},'${esc(fieldPath)}')"` +
+          `  style="margin-left:4px;padding:2px 8px;background:#c0392b;color:white;border:none;border-radius:3px;cursor:pointer;font-size:11px;vertical-align:middle">Save</button>` +
+          ` <button onclick="cancelRejectNote(${stagingId},'${esc(fieldPath)}')"` +
+          `  style="margin-left:2px;padding:2px 6px;background:transparent;border:1px solid #aaa;color:#aaa;border-radius:3px;cursor:pointer;font-size:11px;vertical-align:middle">×</button>`;
+      });
+      // Focus the first input rendered
+      const input = document.getElementById(`reject-note-${stagingId}-${escaped}`);
+      if (input) input.focus();
+    };
+
+    window.handleRejectNoteKey = function(event, stagingId, fieldPath) {
+      if (event.key === 'Enter') { event.preventDefault(); submitRejectNote(stagingId, fieldPath); }
+      else if (event.key === 'Escape') { event.preventDefault(); cancelRejectNote(stagingId, fieldPath); }
+    };
+
+    window.submitRejectNote = async function(stagingId, fieldPath) {
+      const escaped = cssEscapeAttr(fieldPath);
+      const input = document.getElementById(`reject-note-${stagingId}-${escaped}`);
+      const note = input ? input.value.trim() : '';
+      // Backend applies default "correct answer unknown / not stated in source" when note is empty.
+      await postFieldCorrection(stagingId, fieldPath, 'rejected', undefined, note || null);
+      _restoreActionCell(stagingId, fieldPath);
+    };
+
+    window.cancelRejectNote = function(stagingId, fieldPath) {
+      _restoreActionCell(stagingId, fieldPath);
+    };
+
+    function _restoreActionCell(stagingId, fieldPath) {
+      const escaped = cssEscapeAttr(fieldPath);
+      const trs = document.querySelectorAll(`tr[data-field-path="${escaped}"]`);
+      trs.forEach(tr => {
+        const actionCell = tr.querySelector('td:last-child');
+        if (!actionCell) return;
+        actionCell.innerHTML =
+          `<span class="field-correction-pill" data-field-path="${esc(fieldPath)}"` +
+          ` style="display:none;font-size:10px;padding:2px 6px;border-radius:3px;margin-right:4px;vertical-align:middle"></span>` +
+          `<button onclick="markFieldCorrect(${stagingId},'${esc(fieldPath)}')" title="Field is correct as-is"` +
+          ` style="padding:2px 7px;background:transparent;border:1px solid var(--nature-700,#2f6a31);color:var(--nature-700,#2f6a31);border-radius:3px;cursor:pointer;font-size:11px">&#10003;</button>` +
+          `<button onclick="markFieldRejected(${stagingId},'${esc(fieldPath)}')" title="Field value is wrong"` +
+          ` style="margin-left:3px;padding:2px 7px;background:transparent;border:1px solid #c0392b;color:#c0392b;border-radius:3px;cursor:pointer;font-size:11px">&#10005;</button>`;
+      });
+      // Re-stamp any existing correction pill
+      loadAndApplyCorrections(stagingId);
+    }
+
+    async function postFieldCorrection(stagingId, fieldPath, action, correctedValue, note) {
+      try {
+        const body = { field_path: fieldPath, action };
+        if (correctedValue !== undefined) body.corrected_value = correctedValue;
+        if (note !== undefined && note !== null) body.note = note;
+        const res = await fetch(`/api/admin/staging/${stagingId}/correct`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) { console.error('postFieldCorrection failed', data); return; }
+        // Stamp the pill in the expand panel
+        stampFieldPill(stagingId, fieldPath, action);
+        // If auto-promoted, show banner and refresh the staging table
+        if (data.auto_status) {
+          const banner = document.getElementById(`auto-promote-banner-${stagingId}`);
+          if (banner) {
+            const label = data.auto_status === 'approved' ? 'Auto-approved (all fields verified)' : 'Auto-rejected (field flagged as wrong)';
+            const color = data.auto_status === 'approved' ? 'rgba(47,106,49,0.12)' : 'rgba(192,57,43,0.10)';
+            const textColor = data.auto_status === 'approved' ? 'var(--nature-700,#2f6a31)' : '#c0392b';
+            banner.style.display = 'inline-block';
+            banner.style.background = color;
+            banner.style.color = textColor;
+            banner.textContent = label;
+          }
+          if (data.auto_status === 'approved') {
+            const acceptBtn = document.getElementById(`accept-btn-${stagingId}`);
+            if (acceptBtn) { acceptBtn.style.opacity = '0.45'; acceptBtn.disabled = true; }
+          }
+          if (typeof markSourceDirty === 'function') await markSourceDirty();
+          if (typeof load === 'function') load();
+          // Auto-close any open lightbox so the partner returns to the refreshed table
+          document.querySelectorAll('.pdf-overlay').forEach(o => o.remove());
+        }
+      } catch (err) {
+        console.error('postFieldCorrection threw', err);
+      }
+    }
+
+    function stampFieldPill(stagingId, fieldPath, action) {
+      // Match pills in both the expand-panel (tr.staging-expanded) AND the
+      // lightbox sidebar (.pdf-overlay), so a click in either context updates both.
+      const styles = {
+        correct:  { bg: 'rgba(47,106,49,0.15)', color: 'var(--nature-700,#2f6a31)', text: '✓ correct' },
+        edited:   { bg: 'rgba(47,106,49,0.10)', color: 'var(--nature-700,#2f6a31)', text: '✎ edited' },
+        rejected: { bg: 'rgba(192,57,43,0.15)', color: '#c0392b',                   text: '✕ wrong' }
+      };
+      const st = styles[action];
+      if (!st) return;
+      const escaped = cssEscapeAttr(fieldPath);
+      const pills = document.querySelectorAll(`tr[data-field-path="${escaped}"] .field-correction-pill`);
+      pills.forEach(pill => {
+        pill.style.display = 'inline-block';
+        pill.style.background = st.bg;
+        pill.style.color = st.color;
+        pill.textContent = st.text;
+      });
+    }
+
+    async function loadAndApplyCorrections(stagingId) {
+      try {
+        const res = await fetch(`/api/admin/staging/${stagingId}/corrections`);
+        const data = await res.json();
+        if (!data.corrections) return;
+        for (const c of data.corrections) stampFieldPill(stagingId, c.field_path, c.action);
+      } catch { /* silent */ }
+    }
+
+    function cssEscapeAttr(s) {
+      // Escape a string for use in a CSS attribute selector value.
+      // field_path values are plain ASCII keys so this is mostly defensive.
+      return String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    }
+
+    // -----------------------------------------------------------------------
+
+    function renderFilterBar() {
+      const tab = tabs[state.tab];
+      $('filter-bar').innerHTML = tab.renderFilters(state.filters[state.tab], state.lastResponse[state.tab]);
+      // Wire up change handlers
+      $('filter-bar').querySelectorAll('select, input').forEach(el => {
+        el.addEventListener('change', () => {
+          state.filters[state.tab][el.name] = el.value;
+          state.page = 1;
+          urlState.push('replace');
+          load();
+        });
+        if (el.tagName === 'INPUT') {
+          let timer = null;
+          el.addEventListener('input', () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+              state.filters[state.tab][el.name] = el.value;
+              state.page = 1;
+              urlState.push('replace');
+              load();
+            }, 350);
+          });
+        }
+      });
+    }
+
+    function renderHeader() {
+      const tab = tabs[state.tab];
+      // Column header strings can contain HTML (e.g. the select-all checkbox
+      // on the Claims tab). They're hardcoded in our tab configs — no user
+      // input — so we render them raw. Plain-text headers still work
+      // because they have no HTML characters that need escaping.
+      $('thead-row').innerHTML = tab.columns.map((c, idx) => {
+        const isCheckbox = typeof c === 'string' && c.startsWith('<input');
+        const infoKey = (COLUMN_INFO_MAP[state.tab] || [])[idx];
+        const infoBubble = infoKey ? infoIcon(infoKey) : '';
+        return `<th${isCheckbox ? ' class="checkbox"' : ''}>${c}${infoBubble}</th>`;
+      }).join('');
+    }
+
+    async function load() {
+      const myLoadId = ++activeLoadId;
+      const tab = tabs[state.tab];
+      // Custom-render tabs (Upload, etc.) skip the standard data fetch.
+      if (tab.custom) {
+        renderCustomTab(state.tab);
+        return;
+      }
+      // When in the Ingest top-tab, scope sub-tab data to the selected
+      // source. If no source is picked, show an empty-state prompt
+      // instead of fetching across all sources (which would lose the
+      // partner's mental model of "this is what just got ingested").
+      const isIngest = state.topTab === 'ingest';
+      const noSourceScope = !!tab.noSourceScope;
+      if (isIngest && state.tab !== 'upload' && !noSourceScope && !state.ingestSourceId) {
+        $('status-meta').textContent = '— pick a source above to load Ingest data —';
+        $('rows').innerHTML = `<tr><td colspan="20" class="empty">Select a paper from the Queue tab to scope the Ingest tabs to it.</td></tr>`;
+        $('pager').innerHTML = '';
+        return;
+      }
+      // Show loading placeholder immediately so stale rows from a previous tab are never visible.
+      const colCount = (tab.columns || []).length || 20;
+      const tbodyEarly = $('rows');
+      if (tbodyEarly) tbodyEarly.innerHTML = `<tr><td colspan="${colCount}" class="empty" style="opacity:0.6">Loading…</td></tr>`;
+      try {
+        const filterParams = { ...state.filters[state.tab] };
+        if (isIngest && state.ingestSourceId && !noSourceScope) {
+          filterParams.source_id = state.ingestSourceId;
+        }
+        const params = new URLSearchParams({ page: state.page, pageSize: state.pageSize, ...filterParams });
+        const res = await fetch(`${tab.endpoint}?${params}`);
+        const rawData = await res.json();
+        // Out-of-order fetch: a newer load() has already started — discard this result.
+        if (myLoadId !== activeLoadId) return;
+        // Normalise flat-array responses (e.g. ingest-sources returns { items } without pagination).
+        const data = (rawData.total === undefined && Array.isArray(rawData.items))
+          ? { items: rawData.items, total: rawData.items.length, page: 1, pageSize: rawData.items.length || 1 }
+          : rawData;
+        // Defensive: malformed or error responses must not throw — render empty table instead.
+        if (!Array.isArray(data.items)) data.items = [];
+        state.lastResponse[state.tab] = data;
+        renderFilterBar();
+        $('status-meta').textContent = `${(data.total ?? 0).toLocaleString()} ${state.tab} · page ${data.page} of ${Math.max(1, Math.ceil((data.total || 0) / (data.pageSize || 50)))}`;
+        const tbody = $('rows');
+        if (data.items.length) {
+          tbody.innerHTML = data.items.map(tab.renderRow).join('');
+        } else {
+          tbody.innerHTML = `<tr><td colspan="${colCount}" class="empty">No rows match the current filters.</td></tr>`;
+        }
+        const totalPages = Math.max(1, Math.ceil(data.total / data.pageSize));
+        $('pager').innerHTML = noSourceScope ? '' : `
+          <button ${data.page === 1 ? 'disabled' : ''} onclick="goPage(1)">⏮ First</button>
+          <button ${data.page === 1 ? 'disabled' : ''} onclick="goPage(${data.page - 1})">← Prev</button>
+          <span class="pager-info">Page ${data.page} of ${totalPages}</span>
+          <button ${data.page === totalPages ? 'disabled' : ''} onclick="goPage(${data.page + 1})">Next →</button>
+          <button ${data.page === totalPages ? 'disabled' : ''} onclick="goPage(${totalPages})">Last ⏭</button>
+        `;
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      } catch (err) {
+        if (myLoadId !== activeLoadId) return;
+        console.error('load() failed', err);
+        const tbody = $('rows');
+        if (tbody) tbody.innerHTML = `<tr><td colspan="${colCount}" class="empty" style="color:var(--red,#c0392b)">Error loading data: ${(err && err.message) ? esc(err.message) : 'unknown error'}. Try a different filter or reload.</td></tr>`;
+      }
+    }
+
+    // ── Custom tab renderers (Upload, future placeholder tabs) ───────────────
+    // ── Dedup tab helpers ────────────────────────────────────────────────────
+    async function renderDedupCandidates() {
+      const target = $('rows');
+      target.innerHTML = '<tr><td><div style="padding:8px">Loading candidates…</div></td></tr>';
+      let data;
+      try { data = await (await fetch('/api/admin/dedup/varieties')).json(); }
+      catch (e) { target.innerHTML = `<tr><td><div style="padding:8px;color:red">Fetch error: ${esc(String(e))}</div></td></tr>`; return; }
+      const groups = data.groups || [];
+      if (!groups.length) { target.innerHTML = '<tr><td><div style="padding:8px">No pending near-duplicate varieties. 🎉</div></td></tr>'; return; }
+      target.innerHTML = `<tr><td>${groups.map(g => `
+        <section style="margin:10px 0;border:1px solid rgba(47,106,49,0.18);border-radius:6px;padding:8px">
+          <h3 style="margin:0 0 6px">${esc(g.parent.name)} <span style="color:#888">(${g.pairs.length} pair${g.pairs.length > 1 ? 's' : ''})</span></h3>
+          ${g.pairs.map(p => {
+            const canon = p.suggestedCanonicalId;
+            const other = p.suggestedCanonicalId === p.a ? p.b : p.a;
+            return `<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-top:1px solid #eee;flex-wrap:wrap">
+              <span style="font-size:12px">#${p.a} ${esc(p.aName || '')} (${p.aClaimCount} claims) ↔ #${p.b} ${esc(p.bName || '')} (${p.bClaimCount} claims) · dist ${p.levenshtein}</span>
+              <span style="color:#2f6a31;font-size:12px">suggest canonical #${canon}</span>
+              <button onclick="dedupApprove(${canon},${other})">Approve merge</button>
+              <button onclick="dedupApprove(${other},${canon})">Merge the other way</button>
+              <button onclick="dedupKeepSeparate(${p.a},${p.b})">Keep separate</button>
+            </div>`;
+          }).join('')}
+        </section>`).join('')}</td></tr>`;
+    }
+    async function dedupApprove(canonicalId, mergedId) {
+      const r = await fetch('/api/admin/dedup/varieties/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ canonicalId, mergedId }) });
+      if (!r.ok) { alert('Merge failed: ' + (await r.json()).error); return; }
+      renderDedupCandidates();
+    }
+    async function dedupKeepSeparate(idA, idB) {
+      await fetch('/api/admin/dedup/varieties/keep-separate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idA, idB }) });
+      renderDedupCandidates();
+    }
+    async function renderDedupLog() {
+      const target = $('rows');
+      target.innerHTML = '<tr><td><div style="padding:8px">Loading audit log…</div></td></tr>';
+      let data;
+      try { data = await (await fetch('/api/admin/dedup/log')).json(); }
+      catch (e) { target.innerHTML = `<tr><td><div style="padding:8px;color:red">Fetch error: ${esc(String(e))}</div></td></tr>`; return; }
+      const items = data.items || [];
+      if (!items.length) { target.innerHTML = '<tr><td><div style="padding:8px">No merge log entries yet.</div></td></tr>'; return; }
+      target.innerHTML = `<tr><td><table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr style="border-bottom:1px solid #ddd">
+        <th style="text-align:left;padding:4px">when</th>
+        <th style="text-align:left;padding:4px">canonical</th>
+        <th style="text-align:left;padding:4px">merged</th>
+        <th style="text-align:left;padding:4px">dist</th>
+        <th style="text-align:left;padding:4px">claims</th>
+        <th style="text-align:left;padding:4px">traits</th>
+        <th></th>
+      </tr></thead><tbody>${
+        items.map(r => `<tr style="${r.undone_at ? 'opacity:0.5' : ''};border-bottom:1px solid #eee">
+          <td style="padding:4px">${esc(r.merged_at || '')}</td>
+          <td style="padding:4px">#${r.canonical_entity_id} ${esc(r.canonical_variety_name || '')}</td>
+          <td style="padding:4px">#${r.merged_entity_id} ${esc(r.merged_variety_name || '')}</td>
+          <td style="padding:4px">${r.levenshtein_distance}</td>
+          <td style="padding:4px">${r.claims_updated}</td>
+          <td style="padding:4px">${r.entity_trait_claims_updated}</td>
+          <td style="padding:4px">${r.undone_at ? 'undone' : `<button onclick="dedupUndo(${r.id})">Undo</button>`}</td>
+        </tr>`).join('')
+      }</tbody></table></td></tr>`;
+    }
+    async function dedupUndo(logId) {
+      const r = await fetch('/api/admin/dedup/undo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logId }) });
+      if (!r.ok) { alert('Undo failed: ' + (await r.json()).error); return; }
+      renderDedupLog();
+    }
+
+    // ── Entity dedup tab helpers ──────────────────────────────────────────────
+    async function renderEntityDedup() {
+      const target = $('rows');
+      target.innerHTML = '<tr><td><div style="padding:8px">Loading review queue…</div></td></tr>';
+      let data;
+      try { data = await (await fetch('/api/admin/dedup/entities')).json(); }
+      catch (e) { target.innerHTML = `<tr><td><div style="padding:8px;color:red">Fetch error: ${esc(String(e))}</div></td></tr>`; return; }
+      const items = data.items || [];
+      if (!items.length) { target.innerHTML = '<tr><td><div style="padding:8px">No entity pairs awaiting human review. 🎉</div></td></tr>'; return; }
+      target.innerHTML = `<tr><td>${items.map(p => {
+        const other = p.suggested_canonical_id === p.a_id ? p.b_id : p.a_id;
+        return `<section style="margin:8px 0;border:1px solid rgba(47,106,49,0.18);border-radius:6px;padding:8px">
+          <div style="font-size:12px">#${p.a_id} ${esc(p.a_name || '')} ↔ #${p.b_id} ${esc(p.b_name || '')} · <b>${esc(p.tier || '')}</b></div>
+          <div style="font-size:11px;color:#555">critic: ${esc(p.critic || '—')} · verdict: ${esc(p.verdict || 'none')}${p.confidence != null ? ' @' + p.confidence : ''} · ${esc(p.reasoning || '')}</div>
+          <div style="display:flex;gap:8px;align-items:center;padding-top:4px;flex-wrap:wrap">
+            <span style="color:#2f6a31;font-size:12px">suggest canonical #${p.suggested_canonical_id}</span>
+            <button onclick="entityDedupApprove(${p.candidate_id})">Approve merge</button>
+            <button onclick="entityDedupApprove(${p.candidate_id}, ${other})">Merge the other way</button>
+            <button onclick="entityDedupKeepSeparate(${p.candidate_id})">Keep separate</button>
+          </div>
+        </section>`;
+      }).join('')}</td></tr>`;
+    }
+    async function entityDedupApprove(candidateId, canonicalId) {
+      const body = canonicalId != null ? { candidateId, canonicalId } : { candidateId };
+      const r = await fetch('/api/admin/dedup/entities/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok) { alert('Merge failed: ' + (await r.json()).error); return; }
+      renderEntityDedup();
+    }
+    async function entityDedupKeepSeparate(candidateId) {
+      await fetch('/api/admin/dedup/entities/keep-separate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ candidateId }) });
+      renderEntityDedup();
+    }
+    async function renderEntityDedupLog() {
+      const target = $('rows');
+      target.innerHTML = '<tr><td><div style="padding:8px">Loading audit log…</div></td></tr>';
+      let data;
+      try { data = await (await fetch('/api/admin/dedup/entities/log')).json(); }
+      catch (e) { target.innerHTML = `<tr><td><div style="padding:8px;color:red">Fetch error: ${esc(String(e))}</div></td></tr>`; return; }
+      const items = data.items || [];
+      if (!items.length) { target.innerHTML = '<tr><td><div style="padding:8px">No entity merges yet.</div></td></tr>'; return; }
+      target.innerHTML = `<tr><td><table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr style="border-bottom:1px solid #ddd">
+        <th style="text-align:left;padding:4px">when</th><th style="text-align:left;padding:4px">canonical</th>
+        <th style="text-align:left;padding:4px">merged</th><th style="text-align:left;padding:4px">claims</th><th></th>
+      </tr></thead><tbody>${items.map(r => `<tr style="${r.undone_at ? 'opacity:0.5' : ''};border-bottom:1px solid #eee">
+        <td style="padding:4px">${esc(r.merged_at || '')}</td>
+        <td style="padding:4px">#${r.canonical_entity_id} ${esc(r.canonical_scientific_name || '')}</td>
+        <td style="padding:4px">#${r.merged_entity_id} ${esc(r.merged_scientific_name || '')}</td>
+        <td style="padding:4px">${r.claims_updated}</td>
+        <td style="padding:4px">${r.undone_at ? 'undone' : `<button onclick="entityDedupUndo(${r.id})">Undo</button>`}</td>
+      </tr>`).join('')}</tbody></table></td></tr>`;
+    }
+    async function entityDedupUndo(logId) {
+      const r = await fetch('/api/admin/dedup/entities/undo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logId }) });
+      if (!r.ok) { alert('Undo failed: ' + (await r.json()).error); return; }
+      renderEntityDedupLog();
+    }
+
+    function renderCustomTab(key) {
+      $('status-meta').textContent = '';
+      $('thead-row').innerHTML = '';
+      $('pager').innerHTML = '';
+      const tbody = $('rows');
+      if (key === 'dedupCandidates') return renderDedupCandidates();
+      if (key === 'dedupLog') return renderDedupLog();
+      if (key === 'entityDedup') return renderEntityDedup();
+      if (key === 'entityDedupLog') return renderEntityDedupLog();
+      if (key === 'upload') {
+        tbody.innerHTML = `
+          <tr><td>
+            <div style="padding:24px;margin:20px;max-width:640px">
+              <h3 style="margin:0 0 6px;color:var(--nature-900);font-size:16px">Upload a PDF for ingestion</h3>
+              <p style="font-size:12px;color:var(--earth-700);margin:0 0 16px;line-height:1.5">
+                Drop a PDF below or click to browse. The file is saved to <code style="background:var(--nature-50);padding:1px 4px;border-radius:3px">literature/{papers|books|extension}/</code>,
+                a <code>sources</code> row is created with your reviewer name as the uploader, and an
+                <code>extraction_queue</code> row is added with status=pending.
+                Actual extraction runs offline (CLI; server-side extraction deferred to cloud-DB era).
+              </p>
+
+              <form id="upload-form" style="display:flex;flex-direction:column;gap:12px">
+                <div id="dropzone" style="border:2px dashed rgba(47,106,49,0.4);border-radius:8px;padding:36px;text-align:center;background:var(--nature-50);cursor:pointer;transition:border-color 0.15s">
+                  <p id="dropzone-msg" style="margin:0;color:var(--nature-900);font-weight:500">Drag & drop a PDF here, or click to browse</p>
+                  <p style="margin:6px 0 0;font-size:11px;color:var(--earth-700)">No size limit. PDF only.</p>
+                  <input type="file" id="upload-file" accept="application/pdf,.pdf" style="display:none" />
+                </div>
+
+                <div style="display:grid;grid-template-columns:140px 1fr;gap:8px 12px;align-items:center;font-size:13px">
+                  <label for="upload-source-type" style="color:var(--earth-700)">Source type:</label>
+                  <select id="upload-source-type" style="padding:5px 8px;border:1px solid rgba(47,106,49,0.3);border-radius:4px;font-size:12px">
+                    <option value="paper">paper</option>
+                    <option value="book">book</option>
+                    <option value="extension">extension</option>
+                    <option value="report">report</option>
+                    <option value="preprint">preprint</option>
+                    <option value="thesis">thesis</option>
+                    <option value="website">website</option>
+                  </select>
+
+                  <label for="upload-title" style="color:var(--earth-700)">Title (optional):</label>
+                  <input type="text" id="upload-title" placeholder="Defaults to filename. Improves the source-picker label." style="padding:5px 8px;border:1px solid rgba(47,106,49,0.3);border-radius:4px;font-size:12px" />
+                </div>
+
+                <button type="submit" id="upload-submit" disabled style="cursor:pointer;background:var(--nature-700);color:white;border:none;border-radius:4px;padding:8px 16px;font-size:13px;font-weight:500;align-self:flex-start">Upload</button>
+              </form>
+
+              <div id="upload-result" style="margin-top:18px"></div>
+            </div>
+          </td></tr>
+        `;
+        wireUploadForm();
+      }
+    }
+
+    // ── Upload form wiring ───────────────────────────────────────────────────
+    function wireUploadForm() {
+      const fileInput  = document.getElementById('upload-file');
+      const dropzone   = document.getElementById('dropzone');
+      const dropzoneMsg = document.getElementById('dropzone-msg');
+      const submitBtn  = document.getElementById('upload-submit');
+      const form       = document.getElementById('upload-form');
+      const resultDiv  = document.getElementById('upload-result');
+      let selectedFile = null;
+
+      function setSelected(f) {
+        selectedFile = f || null;
+        if (f) {
+          dropzoneMsg.textContent = `📄 ${f.name} (${(f.size / 1024 / 1024).toFixed(1)} MB) — ready to upload`;
+          dropzone.style.borderColor = 'var(--nature-700)';
+          submitBtn.disabled = false;
+        } else {
+          dropzoneMsg.textContent = 'Drag & drop a PDF here, or click to browse';
+          dropzone.style.borderColor = 'rgba(47,106,49,0.4)';
+          submitBtn.disabled = true;
+        }
+      }
+
+      dropzone.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', e => setSelected(e.target.files[0]));
+      dropzone.addEventListener('dragover', e => {
+        e.preventDefault();
+        dropzone.style.borderColor = 'var(--nature-700)';
+      });
+      dropzone.addEventListener('dragleave', () => {
+        dropzone.style.borderColor = selectedFile ? 'var(--nature-700)' : 'rgba(47,106,49,0.4)';
+      });
+      dropzone.addEventListener('drop', e => {
+        e.preventDefault();
+        const f = e.dataTransfer.files?.[0];
+        if (f) setSelected(f);
+      });
+
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        if (!selectedFile) return;
+        const fd = new FormData();
+        fd.append('file', selectedFile);
+        fd.append('source_type', document.getElementById('upload-source-type').value);
+        const title = document.getElementById('upload-title').value.trim();
+        if (title) fd.append('title', title);
+        fd.append('uploader', $('reviewer').value.trim() || 'owner');
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Uploading…';
+        resultDiv.innerHTML = '';
+        try {
+          const res = await fetch('/api/admin/review/upload', { method: 'POST', body: fd });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || `HTTP ${res.status}`);
+          }
+          const data = await res.json();
+          toast(`Uploaded — queue #${data.queue_id}, source #${data.source_id}`);
+          resultDiv.innerHTML = `
+            <div style="background:#e6f6e7;border:1px solid var(--nature-200);border-radius:6px;padding:12px 16px;font-size:12px">
+              <strong style="color:var(--nature-900)">✓ Upload complete</strong><br/>
+              <span style="color:var(--earth-700)">
+                Queue id: <strong>${data.queue_id}</strong> · Source id: <strong>${data.source_id}</strong> · File: <code>${esc(data.sanitized_name)}</code><br/>
+                The owner runs <code>backend/pdf-chunk.js</code> + <code>backend/stage-from-json.js</code> to extract.
+                Once extraction completes, the source will appear in the Ingest source-picker.
+              </span>
+            </div>
+          `;
+          // Clear the form for the next upload.
+          fileInput.value = '';
+          document.getElementById('upload-title').value = '';
+          setSelected(null);
+          submitBtn.textContent = 'Upload';
+          // Invalidate the cached source list so the next Ingest entry refetches.
+          ingestSourcesList = [];
+        } catch (err) {
+          toast(`Upload failed: ${err.message}`, true);
+          resultDiv.innerHTML = `
+            <div style="background:#fadddd;border:1px solid #f7c7c7;border-radius:6px;padding:12px 16px;font-size:12px;color:var(--red)">
+              Upload failed: ${esc(err.message)}
+            </div>
+          `;
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Upload';
+        }
+      });
+    }
+
+    // ── External exports (Publish > GloBI / Trefle) ──────────────────────────
+    function exportGlobiCsv() {
+      // Trigger a browser download via a hidden anchor — the response is
+      // streamed as text/csv with Content-Disposition: attachment, so
+      // the browser handles the save dialog.
+      const url = '/api/admin/review/export/globi.csv?status=human_verified';
+      const a = document.createElement('a');
+      a.href = url; a.download = '';
+      document.body.appendChild(a); a.click(); a.remove();
+      toast('GloBI CSV download initiated (human_verified claims only)');
+    }
+    function exportTrefleJson() {
+      const url = '/api/admin/review/export/trefle.json';
+      const a = document.createElement('a');
+      a.href = url; a.download = '';
+      document.body.appendChild(a); a.click(); a.remove();
+      toast('Trefle JSON download initiated (CC-licensed plant entities only)');
+    }
+
+    async function setTopTab(key) {
+      if (!tabGroups[key]) return;
+      if (typeof autoAdvance !== 'undefined') autoAdvance.dismiss();
+      state.topTab = key;
+      // Pick the first sub-tab in this group as the active sub-tab.
+      const firstSub = tabGroups[key].subs[0];
+      state.tab = firstSub;
+      state.page = 1;
+      state.selectedIds.clear();
+      updateBulkBar();
+      clearStagingSelection();
+      urlState.push('push');
+      renderTopTabs();
+      // Load the ingest source list lazily on first entry into Ingest.
+      if (key === 'ingest') await loadIngestSources();
+      renderIngestPicker();
+      renderTabs();
+      renderFilterBar();
+      renderHeader();
+      load();
+    }
+
+    function setTab(key) {
+      if (typeof autoAdvance !== 'undefined') autoAdvance.dismiss();
+      state.tab = key;
+      state.page = 1;
+      state.selectedIds.clear();
+      updateBulkBar();
+      clearStagingSelection();
+      urlState.push('push');
+      applyNav();
+    }
+
+    function goPage(n) {
+      state.page = n;
+      state.selectedIds.clear();
+      updateBulkBar();
+      clearStagingSelection();
+      urlState.push('replace');
+      load();
+    }
+
+    function toggleExpand(id) {
+      const row = document.querySelector(`tr.claim-row[data-id="${id}"]`);
+      if (!row) return;
+      row.classList.toggle('expanded');
+    }
+
+    // Staging-row equivalent of action(). The Verify expand panel calls this
+    // because its row ids are extraction_staging.id, not claims.id — calling
+    // /api/admin/review/:id/* (which looks up claims) would 404.
+    async function actionStaging(stagingId, kind, btn, note) {
+      const endpointMap = { accept: 'approve', reject: 'reject', flag: 'flag' };
+      const endpoint = endpointMap[kind];
+      if (!endpoint) { toast(`Unknown action: ${kind}`, true); return; }
+      const reviewer = $('reviewer').value.trim() || null;
+      if (btn) btn.disabled = true;
+      try {
+        const body = { reviewer };
+        if (note !== undefined && note !== null && note !== '') body.note = note;
+        const res = await fetch(`/api/admin/staging/${stagingId}/${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        toast(`Staging #${stagingId}: ${kind} → ${data.review_status}`);
+        document.querySelectorAll('.pdf-overlay').forEach(o => o.remove());
+        await markSourceDirty();
+        await load();
+      } catch (err) {
+        toast(`Error: ${err.message}`, true);
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    // Row-level Reject / Flag prompt: swap the action bar for an inline note
+    // input (mirrors the per-field ✕ Reject UX). Empty input → no note (the
+    // backend stores null in review_note). Esc cancels and restores the bar.
+    const _stagingActionBarHTML = {};  // stagingId → original innerHTML for restore
+    window.actionStagingPrompt = function(stagingId, kind, btn) {
+      if (kind === 'accept') { actionStaging(stagingId, 'accept', btn); return; }
+      const bar = document.getElementById(`actions-bar-${stagingId}`);
+      if (!bar) { actionStaging(stagingId, kind, btn); return; } // fallback
+      _stagingActionBarHTML[stagingId] = bar.innerHTML;
+      const isReject = kind === 'reject';
+      const color = isReject ? '#c0392b' : '#e6b800';
+      const fg    = isReject ? 'white'   : '#333';
+      const verb  = isReject ? 'Reject'  : 'Flag';
+      const placeholder = isReject
+        ? 'Optional: why is the whole row wrong? (Enter to skip)'
+        : 'Optional: what needs a second look? (Enter to skip)';
+      bar.innerHTML = `
+        <input type="text" id="row-note-${stagingId}"
+               placeholder="${placeholder}"
+               style="padding:6px 10px;border:1px solid ${color};border-radius:4px;font-size:12px;flex:1;min-width:300px"
+               onkeydown="handleRowNoteKey(event, ${stagingId}, '${kind}')" />
+        <button onclick="submitRowNote(${stagingId}, '${kind}', this)"
+                style="padding:6px 14px;background:${color};color:${fg};border:none;border-radius:4px;cursor:pointer">${verb}</button>
+        <button onclick="cancelRowNote(${stagingId})"
+                style="padding:6px 12px;background:transparent;border:1px solid #999;color:#666;border-radius:4px;cursor:pointer">Cancel</button>
+      `;
+      const input = document.getElementById(`row-note-${stagingId}`);
+      if (input) input.focus();
+    };
+
+    window.handleRowNoteKey = function(event, stagingId, kind) {
+      if (event.key === 'Enter') { event.preventDefault(); submitRowNote(stagingId, kind, event.target); }
+      else if (event.key === 'Escape') { event.preventDefault(); cancelRowNote(stagingId); }
+    };
+
+    window.submitRowNote = function(stagingId, kind, btn) {
+      const input = document.getElementById(`row-note-${stagingId}`);
+      const note = input ? input.value.trim() : '';
+      actionStaging(stagingId, kind, btn, note || null);
+    };
+
+    window.cancelRowNote = function(stagingId) {
+      const bar = document.getElementById(`actions-bar-${stagingId}`);
+      const html = _stagingActionBarHTML[stagingId];
+      if (bar && html) bar.innerHTML = html;
+      delete _stagingActionBarHTML[stagingId];
+    };
+
+    async function action(id, kind, btn) {
+      const reviewer = $('reviewer').value.trim() || null;
+      btn.disabled = true;
+      try {
+        const res = await fetch(`/api/admin/review/${id}/${kind}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reviewer })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        toast(`#${id}: ${kind} → ${data.review_status}`);
+        // Auto-close any open lightbox so the partner returns to the refreshed table
+        document.querySelectorAll('.pdf-overlay').forEach(o => o.remove());
+        if (state.filters.claims.status === 'ai_reviewed') {
+          const row = btn.closest('tr.claim-row');
+          if (row) {
+            row.style.opacity = 0.3;
+            setTimeout(() => row.remove(), 250);
+          }
+        } else {
+          load();
+        }
+        await markSourceDirty();
+      } catch (err) {
+        toast(`Error: ${err.message}`, true);
+        btn.disabled = false;
+      }
+    }
+
+    $('page-size').addEventListener('change', e => {
+      state.pageSize = parseInt(e.target.value, 10);
+      state.page = 1;
+      urlState.push('replace');
+      load();
+    });
+    $('reviewer').addEventListener('input', e => {
+      localStorage.setItem('agroeco-reviewer', e.target.value);
+    });
+    $('reviewer').value = localStorage.getItem('agroeco-reviewer') || '';
+
+    // Load region list FIRST (so filter dropdowns are populated), then render.
+    async function init() {
+      try {
+        const res = await fetch('/api/admin/review/regions');
+        const d = await res.json();
+        regionsList = d.items || [];
+      } catch (err) {
+        console.warn('Failed to load region list:', err);
+      }
+      const hadHash = urlState.hydrate();
+      if (!hadHash) {
+        state.topTab = 'ingest';
+        state.tab = 'upload';
+      }
+      renderTopTabs();
+      renderIngestPicker();
+      if (state.ingestSourceId) {
+        await progressStrip.fetch();
+        progressStrip.render();
+      }
+      renderTabs();
+      renderFilterBar();
+      renderHeader();
+      load();
+    }
+    // ── Keyboard shortcut layer (Task 12) ────────────────────────────────────
+    const BINDINGS = [
+      { group: 'Navigation',
+        items: [
+          { key: 'j',   desc: 'Focus next row',          fn: () => focusRow(+1) },
+          { key: 'k',   desc: 'Focus previous row',      fn: () => focusRow(-1) },
+          { key: 'g g', desc: 'Focus first row on page', fn: () => focusRowAt(0) },
+          { key: 'G',   desc: 'Focus last row on page',  fn: () => focusRowAt(-1) },
+          { key: ']',   desc: 'Next page',               fn: () => paginate(+1) },
+          { key: '[',   desc: 'Previous page',           fn: () => paginate(-1) },
+          { key: 'Esc', desc: 'Clear focus / close overlay', fn: () => clearFocus() }
+        ]},
+      { group: 'Actions (focused row required)',
+        items: [
+          { key: '⇧A',   desc: 'Accept focused row',              fn: () => actFocused('accept') },
+          { key: '⇧R',   desc: 'Reject focused row',              fn: () => actFocused('reject') },
+          { key: '⇧F',   desc: 'Flag focused row',                fn: () => actFocused('flag') },
+          { key: 'e',    desc: 'Inline-edit first editable cell', fn: () => editFocused() },
+          { key: 'x',    desc: 'Toggle row checkbox',             fn: () => toggleFocusedCheckbox() },
+          { key: 'Enter',desc: 'Expand source-quote / open detail', fn: () => expandFocused() }
+        ]},
+      { group: 'Jumps',
+        items: [
+          { key: 'g i', desc: 'Ingest top-tab',    fn: () => jumpTopTab('ingest') },
+          { key: 'g d', desc: 'Database top-tab',  fn: () => jumpTopTab('database') },
+          { key: 'g p', desc: 'Publish top-tab',   fn: () => jumpTopTab('publish') },
+          { key: 'g u', desc: 'Ingest > Upload',   fn: () => jumpSubTab('upload', 'ingest') },
+          { key: 'g q', desc: 'Ingest > Queue',    fn: () => jumpSubTab('queue', 'ingest') },
+          { key: 'g s', desc: 'Ingest > Staging',  fn: () => jumpSubTab('staging', 'ingest') },
+          { key: 'g e', desc: 'Ingest > Entities', fn: () => jumpSubTab('entities', 'ingest') },
+          { key: 'g c', desc: 'Ingest > Claims',   fn: () => jumpSubTab('claims', 'ingest') }
+        ]},
+      { group: 'Other',
+        items: [
+          { key: '*', desc: 'Select all on page',    fn: () => toggleSelectAllOnPage() },
+          { key: '/', desc: 'Focus filter-bar input', fn: () => focusFilterBar() },
+          { key: '?', desc: 'Show this cheat-sheet', fn: () => cheatsheet.toggle() }
+        ]}
+    ];
+
+    const hotkeys = {
+      pendingPrefix: null,
+      prefixTimer: null,
+      install() { document.addEventListener('keydown', e => this.handle(e)); },
+      shouldIgnore(e) {
+        const t = e.target;
+        return t && t.matches && t.matches('input, textarea, select, [contenteditable="true"]');
+      },
+      handle(e) {
+        if (this.shouldIgnore(e)) return;
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+        // Two-key sequences: 'g' prefix
+        if (this.pendingPrefix === 'g') {
+          this.pendingPrefix = null;
+          clearTimeout(this.prefixTimer);
+          const second = e.key;
+          const combo = `g ${second}`;
+          const binding = this.find(combo);
+          if (binding) { e.preventDefault(); binding.fn(); return; }
+          e.preventDefault();
+          return;
+        }
+        if (e.key === 'g' && !e.shiftKey) {
+          this.pendingPrefix = 'g';
+          this.prefixTimer = setTimeout(() => { this.pendingPrefix = null; }, 700);
+          e.preventDefault();
+          return;
+        }
+
+        // Build key string for lookup
+        let lookup;
+        if (e.shiftKey && /^[a-z]$/i.test(e.key)) {
+          const upper = e.key.toUpperCase();
+          if (upper === 'G') lookup = 'G';
+          else               lookup = '⇧' + upper;
+        } else {
+          lookup = e.key;
+        }
+
+        // Map browser names
+        if (lookup === 'Escape') lookup = 'Esc';
+
+        const binding = this.find(lookup);
+        if (binding) { e.preventDefault(); binding.fn(); }
+      },
+      find(keyString) {
+        for (const grp of BINDINGS) {
+          for (const it of grp.items) {
+            if (it.key === keyString) return it;
+          }
+        }
+        return null;
+      }
+    };
+
+    // Focus model
+    function focusedRow() {
+      if (!state.focusedRowId) return null;
+      return document.querySelector(`#rows tr[data-id="${state.focusedRowId}"]`)
+          || document.querySelector(`#rows tr[data-claim-id="${state.focusedRowId}"]`);
+    }
+    function rowsOnPage() {
+      return Array.from(
+        document.querySelectorAll('#rows tr[data-id], #rows tr[data-claim-id]')
+      );
+    }
+    function rowIdOf(tr) {
+      const v = tr.dataset.id || tr.dataset.claimId;
+      const n = parseInt(v, 10);
+      return Number.isFinite(n) ? n : null;
+    }
+    function focusRow(delta) {
+      const rows = rowsOnPage();
+      if (!rows.length) return;
+      const idx = rows.findIndex(r => rowIdOf(r) === state.focusedRowId);
+      const nextIdx = idx === -1 ? 0 : Math.max(0, Math.min(rows.length - 1, idx + delta));
+      setFocusedRow(rows[nextIdx]);
+    }
+    function focusRowAt(i) {
+      const rows = rowsOnPage();
+      if (!rows.length) return;
+      setFocusedRow(rows[i < 0 ? rows.length + i : i]);
+    }
+    function setFocusedRow(tr) {
+      document.querySelectorAll('tr.row-focused').forEach(r => r.classList.remove('row-focused'));
+      if (!tr) { state.focusedRowId = null; return; }
+      tr.classList.add('row-focused');
+      state.focusedRowId = rowIdOf(tr);
+      tr.scrollIntoView({ block: 'nearest' });
+    }
+    function clearFocus() {
+      setFocusedRow(null);
+      cheatsheet.toggle(false);
+    }
+
+    // Action helpers — only fire when a row is focused
+    function actFocused(action) {
+      const tr = focusedRow(); if (!tr) return;
+      const id = rowIdOf(tr);
+      if (!id) return;
+      const allowed = { staging: ['accept','reject','flag'], claims: ['accept','reject','flag'],
+                        published: ['accept','reject','flag'] };
+      if (!allowed[state.tab] || !allowed[state.tab].includes(action)) return;
+
+      let url, method, body;
+      if (state.tab === 'staging') {
+        if (action === 'flag') {
+          url = '/api/admin/staging/bulk'; method = 'POST'; body = JSON.stringify({ ids: [id], action });
+        } else {
+          url = `/api/admin/staging/${id}/${action}`; method = 'POST'; body = null;
+        }
+      } else {
+        url = `/api/admin/review/${id}/${action}`; method = 'POST'; body = null;
+      }
+
+      fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body })
+        .then(r => {
+          if (!r.ok) { console.warn(`hotkey ${action} on ${id} failed`, r.status); return null; }
+          if (typeof load === 'function') return load();
+        })
+        .then(() => focusRow(+1))
+        .then(() => { if (typeof markSourceDirty === 'function') return markSourceDirty(); });
+    }
+    function editFocused() {
+      const tr = focusedRow(); if (!tr) return;
+      const cell = tr.querySelector('td.editable');
+      if (cell) cell.click();
+    }
+    function toggleFocusedCheckbox() {
+      const tr = focusedRow(); if (!tr) return;
+      const cb = tr.querySelector('input.row-select, input.row-select-staging, input.row-select-claims, input[data-claim-id]');
+      if (cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); }
+    }
+    function expandFocused() {
+      const tr = focusedRow(); if (!tr) return;
+      const quote = tr.querySelector('.quote, .source-quote, td.expandable');
+      if (quote && quote.click) quote.click();
+    }
+
+    // Navigation helpers
+    function paginate(delta) {
+      const next = (state.page || 1) + delta;
+      if (next < 1) return;
+      state.page = next;
+      if (typeof urlState !== 'undefined') urlState.push('replace');
+      if (typeof load === 'function') load();
+    }
+    function jumpTopTab(key) {
+      if (typeof setTopTab === 'function') setTopTab(key);
+    }
+    function jumpSubTab(subKey, requiredTopTab) {
+      if (requiredTopTab && state.topTab !== requiredTopTab) {
+        if (typeof setTopTab === 'function') setTopTab(requiredTopTab);
+      }
+      if (typeof setTab === 'function') {
+        setTab(subKey);
+      } else {
+        state.tab = subKey;
+        if (typeof urlState !== 'undefined') urlState.push('push');
+        if (typeof renderTabs === 'function') renderTabs();
+        if (typeof load === 'function') load();
+      }
+    }
+    function toggleSelectAllOnPage() {
+      const sa = document.getElementById('select-all-staging') || document.getElementById('select-all');
+      if (sa) { sa.checked = !sa.checked; sa.dispatchEvent(new Event('change')); }
+    }
+    function focusFilterBar() {
+      const inp = document.querySelector('.filter-bar input, .filter-bar select');
+      if (inp) inp.focus();
+    }
+
+    // Cheat-sheet overlay
+    const cheatsheet = {
+      el: null,
+      isOpen() { return !!this.el && this.el.classList.contains('visible'); },
+      toggle(force) {
+        if (!this.el) this.render();
+        const wantOpen = (force === undefined) ? !this.isOpen() : force;
+        this.el.classList.toggle('visible', wantOpen);
+      },
+      render() {
+        const groups = BINDINGS.map(g =>
+          `<h3>${g.group}</h3><table>${
+            g.items.map(it => `<tr><td class="binding"><kbd>${it.key}</kbd></td><td>${it.desc}</td></tr>`).join('')
+          }</table>`).join('');
+        this.el = document.createElement('div');
+        this.el.className = 'cheatsheet-backdrop';
+        this.el.innerHTML = `<div class="cheatsheet">
+          <h2>Keyboard shortcuts</h2>${groups}
+          <p style="margin-top:16px;color:var(--earth-700)">Press <kbd>Esc</kbd> or click outside to close.</p>
+        </div>`;
+        this.el.addEventListener('click', e => { if (e.target === this.el) this.toggle(false); });
+        document.body.appendChild(this.el);
+      }
+    };
+
+    // Initialize focusedRowId on state if not present
+    state.focusedRowId = state.focusedRowId || null;
+
+    // Install global keydown listener
+    hotkeys.install();
+    // ── End keyboard shortcut layer ───────────────────────────────────────────
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,225 @@
+---
+// EntityEnvelope — sidebar showing the entity's environmental envelope
+// (temperature, humidity, soil/pH, range, phenology). Only renders fields
+// that have values; absent fields don't surface (no "+ add" prompts —
+// this is the public-facing read view).
+//
+// Used in entity/[slug].astro right column on desktop.
+
+import type { Entity } from '../lib/entity-types';
+
+interface Props {
+  entity: Entity;
+  inherited?: Record<string, { value: string; fromName: string; fromSlug: string }>;
+}
+const { entity, inherited = {} } = Astro.props;
+
+// Helper: range-shaped pair (min, max) → "5 to 33 °C" or "≥ 5 °C" / "≤ 33 °C"
+function rangeStr(min: number | null | undefined, max: number | null | undefined, unit = ''): string | null {
+  if (min == null && max == null) return null;
+  if (min != null && max != null) return `${min} to ${max}${unit}`;
+  if (min != null) return `≥ ${min}${unit}`;
+  return `≤ ${max}${unit}`;
+}
+
+// For a min/max envelope field: prefer the entity's own computed range string;
+// if absent and the variety inherited the field, return the inherited value tagged
+// for subdued rendering. trait names match PLANT_CONSERVED in trait-inheritance-class.js.
+type EnvResult = { text: string; inheritedFrom?: { fromName: string; fromSlug: string } };
+function envValue(own: string | null | undefined, minKey: string, maxKey: string): EnvResult | null {
+  if (own != null) return { text: own };
+  const lo = inherited[minKey], hi = inherited[maxKey];
+  if (!lo && !hi) return null;
+  const text = rangeStr(lo ? Number(lo.value) : null, hi ? Number(hi.value) : null) ?? null;
+  if (text == null) return null;
+  return { text, inheritedFrom: { fromName: (lo ?? hi)!.fromName, fromSlug: (lo ?? hi)!.fromSlug } };
+}
+
+// For a single-key envelope field (light, soil): prefer own; else inherited single key.
+function envValueSingle(own: string | null | undefined, key: string): EnvResult | null {
+  if (own != null) return { text: own };
+  const inh = inherited[key];
+  if (!inh) return null;
+  return { text: inh.value, inheritedFrom: { fromName: inh.fromName, fromSlug: inh.fromSlug } };
+}
+
+// native_regions / invasive_regions are stored as JSON arrays of region
+// tokens, but some elements are verbose raw POWO/GBIF distribution dumps
+// (long, semicolon-laden) that aren't sidebar-friendly. Keep concise tokens,
+// dedup, cap the list.
+function formatRegionList(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  let arr: unknown;
+  try { arr = JSON.parse(raw); } catch { return String(raw); }
+  if (!Array.isArray(arr)) return String(raw);
+  const clean: string[] = [];
+  const seen = new Set<string>();
+  for (const t of arr) {
+    const s = String(t).trim();
+    if (!s || s.length > 32 || s.includes(';')) continue; // drop raw distribution blobs
+    const key = s.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    clean.push(s);
+  }
+  if (!clean.length) return null;
+  const MAX = 12;
+  return clean.length <= MAX ? clean.join(', ') : clean.slice(0, MAX).join(', ') + ` +${clean.length - MAX} more`;
+}
+
+const tempRangeOwn = rangeStr(entity.min_temp_c ?? entity.thermal_min ?? entity.optimal_temp_min, entity.max_temp_c ?? entity.thermal_max ?? entity.optimal_temp_max, ' °C');
+const phRangeOwn = rangeStr(entity.ph_min ?? entity.optimal_ph_min, entity.ph_max ?? entity.optimal_ph_max);
+const humidityRange = rangeStr(entity.optimal_humidity_min ?? null, entity.optimal_humidity_max ?? null, '%')
+  || (entity.atmospheric_humidity != null ? `${entity.atmospheric_humidity}%` : null);
+const precipRangeOwn = rangeStr(entity.min_precipitation_mm, entity.max_precipitation_mm, ' mm');
+const heightRange = rangeStr(entity.average_height_cm, entity.maximum_height_cm, ' cm');
+const lightOwn = entity.light_requirement != null ? `${entity.light_requirement}/10` : null;
+const soilOwn = entity.soil_texture ?? null;
+
+// Envelope fields: own value wins; inherited (from parent species) renders subdued.
+const tempEnv  = envValue(tempRangeOwn, 'optimal_temp_min', 'optimal_temp_max');
+const phEnv    = envValue(phRangeOwn,   'ph_min',           'ph_max');
+const precEnv  = envValue(precipRangeOwn, 'optimal_precip_min', 'optimal_precip_max');
+const lightEnv = envValueSingle(lightOwn, 'optimal_light');
+const soilEnv  = envValueSingle(soilOwn,  'optimal_soil_texture');
+
+// Show larval/adult roles separately ONLY when they differ from each other,
+// or when at least one differs from primary_role. If all three match, the
+// "Primary role" row already conveys it — no need to repeat.
+const showStageRoles =
+  (entity.larval_role || entity.adult_role) &&
+  (entity.larval_role !== entity.adult_role
+   || entity.larval_role !== entity.primary_role);
+
+// Category-group constants for the `categories` field on each row. A row's
+// `categories` lists which bio_categories find that row "relevant" enough to
+// surface (even when empty) — empty rows then render with a subdued '—'
+// placeholder so the user can see what data the schema supports.
+const PLANT    = ['plantae'];
+const INVERT   = ['invertebrate'];
+const VERT     = ['vertebrate'];
+const FUNGI    = ['fungi'];
+const MICROBE  = ['microbe'];
+const ANIMAL   = ['invertebrate', 'vertebrate'];
+const PATHOGEN = ['fungi', 'microbe'];
+const NONPLANT = ['invertebrate', 'vertebrate', 'fungi', 'microbe', 'other'];
+const ALL      = ['plantae', 'invertebrate', 'vertebrate', 'fungi', 'microbe', 'other'];
+
+type Row = {
+  label: string;
+  value: string | number | null | undefined;
+  categories?: string[]; // omit = always relevant
+  inheritedFrom?: { fromName: string; fromSlug: string };
+};
+
+const rows: Row[] = [
+  { label: 'Scientific name', value: entity.scientific_name },
+  { label: 'Common name',     value: entity.common_name },
+
+  // Taxonomy
+  { label: 'Kingdom',         value: entity.kingdom,                                  categories: NONPLANT },
+  { label: 'Phylum',          value: entity.phylum,                                   categories: NONPLANT },
+  { label: 'Class',           value: entity.taxon_class,                              categories: NONPLANT },
+  { label: 'Order',           value: entity.taxon_order,                              categories: NONPLANT },
+  { label: 'Family',          value: entity.family ? `${entity.family}${entity.family_common_name ? ' (' + entity.family_common_name + ')' : ''}` : null, categories: ALL },
+  { label: 'Genus',           value: entity.genus,                                    categories: ALL },
+
+  // Classification
+  { label: 'Category',        value: entity.bio_category },
+  { label: 'Organism type',   value: entity.organism_type?.replace(/_/g, ' ') || null, categories: NONPLANT },
+  { label: 'Primary role',    value: entity.primary_role?.replace(/_/g, ' ') || null,  categories: ALL },
+  { label: 'Larval role',     value: showStageRoles ? entity.larval_role?.replace(/_/g, ' ') || null : null, categories: INVERT },
+  { label: 'Adult role',      value: showStageRoles ? entity.adult_role?.replace(/_/g, ' ') || null : null,  categories: INVERT },
+
+  // Plant-specific
+  { label: 'Crop type',       value: entity.crop_type?.replace(/_/g, ' ') || null,    categories: PLANT },
+  { label: 'Life cycle',      value: entity.duration || entity.life_cycle_type || null, categories: [...PLANT, ...INVERT] },
+  { label: 'Growth form',     value: entity.growth_form?.replace(/_/g, ' ') || null,  categories: PLANT },
+  { label: 'Growth habit',    value: entity.growth_habit?.replace(/_/g, ' ') || null, categories: PLANT },
+  { label: 'Height',          value: heightRange,                                     categories: PLANT },
+  { label: 'Edible',          value: entity.edible ? 'yes' : null,                    categories: PLANT },
+  { label: 'Nitrogen fixer',  value: (entity.nitrogen_fixation && entity.nitrogen_fixation !== 'false') ? 'yes' : null, categories: PLANT },
+  { label: 'Toxicity',        value: entity.toxicity,                                 categories: PLANT },
+
+  // Environmental envelope
+  { label: 'Temperature',     value: tempEnv?.text ?? null,   inheritedFrom: tempEnv?.inheritedFrom,  categories: [...PLANT, ...ANIMAL, ...PATHOGEN] },
+  { label: 'pH',              value: phEnv?.text ?? null,     inheritedFrom: phEnv?.inheritedFrom,    categories: PLANT },
+  { label: 'Humidity',        value: humidityRange,                                                   categories: [...PLANT, ...PATHOGEN] },
+  { label: 'Precipitation',   value: precEnv?.text ?? null,   inheritedFrom: precEnv?.inheritedFrom,  categories: PLANT },
+  { label: 'Soil texture',    value: soilEnv?.text ?? null,   inheritedFrom: soilEnv?.inheritedFrom,  categories: PLANT },
+  { label: 'Light',           value: lightEnv?.text ?? null,  inheritedFrom: lightEnv?.inheritedFrom, categories: PLANT },
+
+  // Range + phenology
+  { label: 'Native regions',  value: formatRegionList(entity.native_regions),         categories: ALL },
+  { label: 'Invasive regions',value: formatRegionList(entity.invasive_regions),       categories: ALL },
+  { label: 'Habitat',         value: entity.habitat_type?.replace(/_/g, ' ') || null, categories: NONPLANT },
+  { label: 'Climate zone',    value: entity.climate_zone,                             categories: PLANT },
+  { label: 'Growth months',   value: entity.growth_months,                            categories: PLANT },
+  { label: 'Bloom months',    value: entity.bloom_months,                             categories: PLANT },
+  { label: 'Activity months', value: entity.activity_months,                          categories: ANIMAL },
+  { label: 'Activity pattern',value: entity.activity_pattern?.replace(/_/g, ' ') || null, categories: ANIMAL },
+  { label: 'Migration',       value: entity.migration_pattern?.replace(/_/g, ' ') || null, categories: ANIMAL },
+
+  // Invertebrate biology
+  { label: 'Voltinism',       value: entity.voltinism,                                categories: INVERT },
+  { label: 'Diet breadth',    value: entity.diet_breadth,                             categories: INVERT },
+  { label: 'Diet type',       value: entity.diet_type?.replace(/_/g, ' ') || null,    categories: ANIMAL },
+  { label: 'Host range',      value: entity.host_range,                               categories: [...INVERT, ...PATHOGEN] },
+  { label: 'Pest mobility',   value: entity.pest_mobility?.replace(/_/g, ' ') || null,categories: INVERT },
+  { label: 'Crop damage',     value: entity.crop_damage_type?.replace(/_/g, ' ') || null, categories: INVERT },
+  { label: 'Vulnerable stage',value: entity.vulnerable_host_stage?.replace(/_/g, ' ') || null, categories: INVERT },
+  { label: 'Degree-days',     value: entity.degree_days_base10 != null ? `${entity.degree_days_base10} (base 10 °C)` : (entity.degree_days != null ? `${entity.degree_days}` : null), categories: INVERT },
+  { label: 'Thermal kill',    value: entity.thermal_kill_point != null ? `${entity.thermal_kill_point} °C` : null, categories: INVERT },
+  { label: 'Dispersal',       value: entity.dispersal_range?.replace(/_/g, ' ') || null, categories: INVERT },
+  { label: 'Natural enemies', value: entity.known_natural_enemies,                    categories: INVERT },
+  { label: 'Biocontrol product', value: entity.commercial_biocontrol ? 'yes' : null,  categories: INVERT },
+
+  // Pathogen biology
+  { label: 'Disease',         value: entity.disease_name,                             categories: PATHOGEN },
+  { label: 'Pathogen subtype',value: entity.pathogen_subtype?.replace(/_/g, ' ') || null, categories: PATHOGEN },
+  { label: 'Transmission',    value: entity.transmission_mode?.replace(/_/g, ' ') || null, categories: PATHOGEN },
+  { label: 'Vector',          value: entity.transmission_vector?.replace(/_/g, ' ') || null, categories: PATHOGEN },
+  { label: 'Seed-borne',      value: entity.seed_borne ? 'yes' : null,                categories: PATHOGEN },
+  { label: 'Survival structure', value: entity.survival_structure?.replace(/_/g, ' ') || null, categories: PATHOGEN },
+  { label: 'Soil persistence',value: entity.soil_persistence_years != null ? `${entity.soil_persistence_years} yr` : null, categories: PATHOGEN },
+  { label: 'Leaf-wetness req.', value: entity.leaf_wetness_hours != null ? `${entity.leaf_wetness_hours} h` : null, categories: PATHOGEN },
+  { label: 'Favorable season',value: entity.favorable_season?.replace(/_/g, ' ') || null, categories: PATHOGEN },
+  { label: 'FRAC group',      value: entity.frac_group,                               categories: FUNGI },
+
+  // Microbe / soil
+  { label: 'Soil function',   value: entity.soil_health_function?.replace(/_/g, ' ') || null, categories: MICROBE },
+
+  // Vertebrate
+  { label: 'Conservation status', value: entity.conservation_status,                  categories: VERT },
+];
+
+// Strict scope filter: a row shows only if it's relevant to the entity's
+// bio_category (or has no category restriction). An out-of-scope row stays
+// hidden even when its value is non-null — such values are almost always
+// stale/wrong (e.g. Zea mays carrying an inherited pest_mobility='none'
+// from a legacy non-plant import). Data hygiene should not surface as
+// UX noise.
+const cat = entity.bio_category || '';
+const visibleRows = rows.filter(r => !r.categories || r.categories.includes(cat));
+---
+
+<aside class="bg-white border border-nature-700/15 rounded-md p-4 text-sm">
+  <h2 class="text-xs uppercase tracking-wide text-earth-700 mb-3">Profile</h2>
+  <dl class="space-y-2">
+    {visibleRows.map(({ label, value, inheritedFrom }) => {
+      const hasValue = value != null && value !== '';
+      return (
+        <div class="grid grid-cols-[100px_1fr] gap-2 text-xs">
+          <dt class="text-earth-700">{label}</dt>
+          <dd class={hasValue ? 'text-nature-900 break-words' : 'text-earth-700/40 italic'}>
+            {hasValue
+              ? (inheritedFrom
+                  ? <span class="text-earth-600 italic">{value} <a class="text-[10px] not-italic hover:underline" href={`/entity/${inheritedFrom.fromSlug}`} title="Inherited from the parent species — an inferred prior, not measured for this variety">↑ {inheritedFrom.fromName}</a></span>
+                  : <span>{value}</span>)
+              : '—'}
+          </dd>
+        </div>
+      );
+    })}
+  </dl>
+</aside>

@@ -1,0 +1,17 @@
+# Generic-guild / non-taxon / coarse-rank entity ids HELD OFF serving.
+# agroecologist verdict 2026-06-29 (serve-referenced-entities pass; the "clean only" scope).
+# Format: one id per line, reason after (reasons must stay digit-free — the parser
+# extracts every integer token). Pass via --hold-ids=backend/serve-referenced-hold-ids.txt
+373975   Arthropoda — bare phylum, far coarser than the class floor
+373977   Insecta — bare class, rank-floor rejects it
+373978   Nematoda — bare phylum
+373989   aphid pests of potato — descriptive guild collective, quarantine not serve
+3430523  Arbores spp. — Latin for "trees", a non-taxon label
+3430562  non-legume companion plants (various) — functional-group placeholder
+3430563  companion plants (various) — generic-guild collective
+3430564  flower strip plants (various) — habitat collective
+3430565  wildflower strips (various) — habitat collective
+3430581  Acrididae spp. — "spp." on a family name, guild placeholder
+3430605  aromatic herbs (mixed spp.) — explicit mixed-guild collective
+3430611  Wildlife habitat (field-edge mixed forbs and grasses) — habitat descriptor, not an organism
+3430640  rotation crops (general) — functional-group placeholder

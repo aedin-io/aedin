@@ -1,0 +1,138 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import CiteThis from '../../components/CiteThis.astro';
+import { getAllRegions, getRegionPage, type Claim } from '../../lib/queries';
+
+export async function getStaticPaths() {
+  // Only emit paths that getRegionPage() can resolve. This filter belt-
+  // and-suspenders the static build — if a region exists in getAllRegions
+  // but getRegionPage somehow can't load it, we skip emitting the path
+  // rather than blowing up the build for the whole site.
+  const regions = getAllRegions();
+  return regions
+    .filter(r => getRegionPage(r.slug) !== null)
+    .map(r => ({ params: { slug: r.slug } }));
+}
+
+const { slug } = Astro.params;
+const page = getRegionPage(slug!);
+if (!page) throw new Error(`Region page failed to resolve for slug "${slug}" — getStaticPaths should have filtered this`);
+
+const { region, claim_count, top_entities, top_sources, claims_by_category } = page;
+const categories = Array.from(claims_by_category.keys()).sort();
+
+function bioBadge(cat: string | null): string {
+  const map: Record<string, string> = {
+    plantae: 'bg-green-50 border-green-300',
+    invertebrate: 'bg-orange-50 border-orange-300',
+    vertebrate: 'bg-blue-50 border-blue-300',
+    fungi: 'bg-pink-50 border-pink-300',
+    microbe: 'bg-purple-50 border-purple-300'
+  };
+  return `px-1.5 py-0.5 text-[10px] uppercase tracking-wide rounded border ${cat && map[cat] ? map[cat] : 'bg-nature-50 border-nature-700/20'}`;
+}
+---
+<Layout
+  title={`${region} — agroecological claims`}
+  description={`${claim_count} AI-consensus-verified agroecological claims relevant to ${region}, with verbatim source quotes and page citations.`}
+>
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Dataset",
+    "name": `Agroecological claims for ${region}`,
+    "description": `${claim_count} AI-consensus-verified claims with regional_context='${region}'`,
+    "url": `https://aedin.io/region/${slug}`,
+    "creator": { "@type": "Organization", "name": "AEDIN contributors" },
+    "isAccessibleForFree": true,
+    "spatialCoverage": region
+  })} />
+
+  <div class="max-w-7xl mx-auto px-6 py-10 grid md:grid-cols-3 gap-6">
+    <article class="md:col-span-2 min-w-0" data-pagefind-body data-pagefind-meta={`kind:region`} data-pagefind-filter="Kind:region">
+      <header class="mb-8 pb-6 border-b border-nature-700/15">
+        <p class="text-xs uppercase tracking-wide text-earth-700 mb-1">Region</p>
+        <h1 class="text-3xl font-semibold text-nature-900 mb-2">{region}</h1>
+        <p class="text-sm text-earth-700">
+          <strong class="text-nature-900">{claim_count}</strong> AI-consensus-verified claims tagged with regional_context = "{region}".
+        </p>
+      </header>
+
+      {top_entities.length > 0 && (
+        <section class="mb-10">
+          <h2 class="text-lg font-semibold text-nature-900 mb-3">Top entities in this region</h2>
+          <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {top_entities.map(e => (
+              <li>
+                <a href={`/entity/${e.slug}`} class="block bg-white border border-nature-700/15 rounded px-3 py-2 hover:border-nature-700/40 transition-colors no-underline">
+                  <div class="italic text-nature-900">{e.scientific_name}</div>
+                  {e.common_name && <div class="text-xs text-earth-700">{e.common_name}</div>}
+                  <div class="text-xs text-nature-700 mt-1">
+                    <span class={bioBadge(e.bio_category)}>{e.bio_category ?? '?'}</span>
+                    <span class="ml-2">{e.claim_count} {e.claim_count === 1 ? 'claim' : 'claims'}</span>
+                  </div>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {categories.map(cat => (
+        <section class="mb-10">
+          <h2 class="text-xl font-semibold text-nature-900 mb-3 capitalize">{cat.replace(/_/g, ' ')}</h2>
+          <ul class="space-y-3">
+            {claims_by_category.get(cat)!.map(c => (
+              <li class="bg-white border border-nature-700/15 rounded p-4">
+                <div class="text-xs text-earth-700 mb-2">
+                  {c.subject_slug ? (
+                    <a href={`/entity/${c.subject_slug}`} class="italic text-nature-700 hover:underline">{c.subject_scientific_name}</a>
+                  ) : (<span class="italic">{c.subject_scientific_name}</span>)}
+                  {c.interaction_type_globi && (<>{' '}<span class="font-mono text-[11px] text-nature-900">{c.interaction_type_globi}</span></>)}
+                  {c.object_scientific_name && (
+                    <>{' '}
+                      {c.object_slug ? (
+                        <a href={`/entity/${c.object_slug}`} class="italic text-nature-700 hover:underline">{c.object_scientific_name}</a>
+                      ) : (<span class="italic">{c.object_scientific_name}</span>)}
+                    </>
+                  )}
+                </div>
+                <blockquote class="text-sm text-nature-900 border-l-2 border-nature-700/40 pl-3 italic mb-2">
+                  &ldquo;{c.source_quote}&rdquo;
+                </blockquote>
+                <p class="text-xs text-earth-700">
+                  {c.source_authors && <span>{c.source_authors}</span>}
+                  {c.source_year && <span> ({c.source_year})</span>}
+                  {c.source_title && c.source_slug && <> · <a href={`/source/${c.source_slug}`} class="text-nature-700 hover:underline">{c.source_title}</a></>}
+                  {c.source_page && <span> · p.&nbsp;{c.source_page}</span>}
+                  <a href={`/claim/${c.id}`} class="ml-2 text-nature-700 hover:underline opacity-60 hover:opacity-100">#{c.id}</a>
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </article>
+
+    <div class="md:col-span-1 space-y-4">
+      <aside class="bg-white border border-nature-700/15 rounded-md p-4 sticky top-4">
+        <h2 class="text-xs uppercase tracking-wide text-earth-700 mb-3">Top sources for this region</h2>
+        <ul class="space-y-2 text-xs">
+          {top_sources.map(s => (
+            <li>
+              <a href={`/source/${s.slug}`} class="text-nature-900 hover:underline block leading-tight">{s.title}</a>
+              <span class="text-earth-700">
+                {s.authors?.split(/[,;&]/)[0].trim()}{s.year && <> · {s.year}</>} · {s.claim_count} {s.claim_count === 1 ? 'claim' : 'claims'}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </aside>
+      <CiteThis
+        kind="entity"
+        id={slug}
+        title={`Agroecological claims for ${region}`}
+        url={`https://aedin.io/region/${slug}`}
+      />
+    </div>
+  </div>
+</Layout>

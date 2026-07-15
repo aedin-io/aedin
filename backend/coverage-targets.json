@@ -1,0 +1,67 @@
+{
+  "_doc": "Coverage-gap targets for coverage-gap-report.js. regionFocus = which regional_context values count as in-scope for a focus. verticals = the curated crop target lists (BD plan workstreams A/B). 'match' entries: a two-word value matches scientific_name exactly (+ that binomial's varieties via genus+species prefix); a single word matches the genus column. Edit freely; no code change needed.",
+  "regionFocus": {
+    "US": {
+      "label": "US-applicable",
+      "scopes": ["North America"],
+      "countries": ["United States", "Hawaii", "Guam", "American Samoa", "Northern Mariana Islands"],
+      "includeGlobal": true
+    },
+    "Pacific": {
+      "label": "Pacific / tropical",
+      "scopes": ["Pacific Islands", "Micronesia", "Oceania"],
+      "countries": ["Guam", "Hawaii", "American Samoa", "Northern Mariana Islands", "Solomon Islands", "Fiji", "Papua New Guinea", "Palau"],
+      "includeGlobal": false
+    },
+    "all": {
+      "label": "All regions",
+      "scopes": [],
+      "countries": [],
+      "includeGlobal": true,
+      "matchAll": true
+    }
+  },
+  "verticals": {
+    "commodity": [
+      { "label": "Maize / corn", "match": ["Zea mays"] },
+      { "label": "Soybean", "match": ["Glycine max"] },
+      { "label": "Wheat", "match": ["Triticum aestivum", "Triticum"] },
+      { "label": "Cotton", "match": ["Gossypium hirsutum", "Gossypium"] },
+      { "label": "Sorghum", "match": ["Sorghum bicolor", "Sorghum"] },
+      { "label": "Rice", "match": ["Oryza sativa"] },
+      { "label": "Barley", "match": ["Hordeum vulgare"] },
+      { "label": "Alfalfa", "match": ["Medicago sativa"] },
+      { "label": "Potato", "match": ["Solanum tuberosum"] },
+      { "label": "Sugar beet", "match": ["Beta vulgaris"] },
+      { "label": "Peanut", "match": ["Arachis hypogaea"] },
+      { "label": "Canola / rapeseed", "match": ["Brassica napus"] }
+    ],
+    "specialty": [
+      { "label": "Apple", "match": ["Malus domestica", "Malus"] },
+      { "label": "Grape", "match": ["Vitis vinifera", "Vitis"] },
+      { "label": "Almond", "match": ["Prunus dulcis"] },
+      { "label": "Sweet orange / citrus", "match": ["Citrus sinensis", "Citrus"] },
+      { "label": "Strawberry", "match": ["Fragaria"] },
+      { "label": "Blueberry", "match": ["Vaccinium"] },
+      { "label": "Tomato", "match": ["Solanum lycopersicum"] },
+      { "label": "Lettuce", "match": ["Lactuca sativa"] },
+      { "label": "Pepper / chili", "match": ["Capsicum annuum", "Capsicum"] },
+      { "label": "Onion / allium", "match": ["Allium cepa", "Allium"] },
+      { "label": "Squash / pumpkin", "match": ["Cucurbita pepo", "Cucurbita"] },
+      { "label": "Sweet potato", "match": ["Ipomoea batatas"] },
+      { "label": "Cucumber", "match": ["Cucumis sativus"] },
+      { "label": "Melon", "match": ["Cucumis melo"] },
+      { "label": "Walnut", "match": ["Juglans"] },
+      { "label": "Peach / cherry / plum", "match": ["Prunus persica", "Prunus avium"] },
+      { "label": "Pear", "match": ["Pyrus communis", "Pyrus"] },
+      { "label": "Broccoli / cole crops", "match": ["Brassica oleracea"] }
+    ]
+  },
+  "axisRollup": {
+    "pest": ["pest_pressure", "herbivory", "parasitism", "gall_formation", "disease_vector"],
+    "pathogen": ["pathogen_pressure"],
+    "beneficial": ["biocontrol", "facilitation", "mutualism", "pollination", "nectar_provision", "pollen_provision", "provides_refuge", "provides_alternative_prey", "attracts_natural_enemy", "provides_oviposition_site"],
+    "other": ["allelopathy"]
+  },
+  "gapThreshold": 15
+}

@@ -1,0 +1,264 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getEntityBySlug, getInteractionRows, getTraitRows, getTraitsForEntity, getClaimRevisionsForEntity, getRelatedEntities, getGenusLevelEvidence, getRevisions, getParentSummary, getVarietyTypeCounts, getVarietiesForSpecies, getCanonicalSlug, resolveMergeRedirect } from '../../lib/queries-d1';
+import { summarizeTraits } from '../../lib/trait-summary';
+import type { Claim } from '../../lib/entity-types';
+import RevisionHistory from '../../components/RevisionHistory.astro';
+import EntityEnvelope from '../../components/EntityEnvelope.astro';
+import TraitSummary from '../../components/TraitSummary.astro';
+import CiteThis from '../../components/CiteThis.astro';
+import ReportError from '../../components/ReportError.astro';
+import EntityClaimsTable from '../../components/EntityClaimsTable.astro';
+
+export const prerender = false;
+
+const { slug } = Astro.params;
+const DB = Astro.locals.runtime.env.DB;
+
+const result = await getEntityBySlug(DB, slug!);
+if (!result) return new Response(null, { status: 404 });
+
+const { entity, claims_by_category, total_claims } = result;
+if (entity.merged_into_entity_id != null) {
+  const canonicalSlug = await getCanonicalSlug(DB, entity.merged_into_entity_id);
+  const redir = resolveMergeRedirect(entity, canonicalSlug);
+  if (redir) return Astro.redirect(redir.location, redir.status);
+  return new Response(null, { status: 404 });
+}
+const categories = Array.from(claims_by_category.keys()).sort();
+const relatedEntities = await getRelatedEntities(DB, entity.id, 8);
+const revisions = await getRevisions(DB, 'entity', entity.id);
+
+// allSettled so a missing-column on D1 (e.g., entity_trait_claims.inherited_from_entity_id
+// not yet ALTERed on live D1) degrades to an empty view instead of a 500.
+const [interactionsR, traitsR, modsR, traitMapR] = await Promise.allSettled([
+  getInteractionRows(DB, entity.id),
+  getTraitRows(DB, entity.id),
+  getClaimRevisionsForEntity(DB, entity.id),
+  getTraitsForEntity(DB, entity.id),
+]);
+const interactions = interactionsR.status === 'fulfilled' ? interactionsR.value : [];
+const traits = traitsR.status === 'fulfilled' ? traitsR.value : [];
+const mods = modsR.status === 'fulfilled' ? modsR.value : [];
+// Condense the sourced trait claims into per-trait ranges/unions for the sidebar.
+const traitSummaries = traitMapR.status === 'fulfilled' ? summarizeTraits(traitMapR.value) : [];
+
+// Variety context — wrapped so a pre-migration D1 (missing variety columns)
+// degrades to "no variety UI" instead of a 500.
+let parent = null, varietyCounts: { variety_type: string | null; n: number }[] = [], varietyPreview: any[] = [];
+try {
+  if (entity.parent_entity_id) parent = await getParentSummary(DB, entity.parent_entity_id);
+  else {
+    [varietyCounts, varietyPreview] = await Promise.all([
+      getVarietyTypeCounts(DB, entity.id),
+      getVarietiesForSpecies(DB, entity.id, { limit: 12 }),
+    ]);
+  }
+} catch { /* columns not yet on live D1 */ }
+const varietyTotal = varietyCounts.reduce((s, c) => s + c.n, 0);
+
+// Build the inherited-envelope map for EntityEnvelope from inherited trait rows.
+const inheritedEnv: Record<string, { value: string; fromName: string; fromSlug: string }> = {};
+for (const t of traits) {
+  if (t.inheritedFromEntityId && t.inheritedFromSlug) {
+    inheritedEnv[t.trait] = { value: t.value, fromName: t.inheritedFromName ?? 'parent', fromSlug: t.inheritedFromSlug };
+  }
+}
+
+// NOTE: entity pages are the commercial data product and are NOT served to AI
+// agents (see public/robots.txt + middleware.ts AI-UA block). The agent-markdown
+// dossier (entityMarkdown in lib/agent-markdown.ts) is intentionally retained for
+// the future *metered* MCP/API tier — it is just no longer handed out for free here.
+
+// Genus-level / collective evidence whose species the source left undetermined
+// (Genus sp. / spp.). Shown in a separate, clearly-labelled section so the
+// entity's species-level precision is never blended with lower-resolution claims.
+const genusEvidence = entity.taxonomic_resolution === 'species'
+  ? await getGenusLevelEvidence(DB, entity)
+  : [];
+
+const fields: { label: string; value: string }[] = [];
+if (entity.bio_category) fields.push({ label: 'Category', value: entity.bio_category });
+if (entity.primary_role) fields.push({ label: 'Primary role', value: entity.primary_role.replace(/_/g, ' ') });
+if (entity.taxon_class) fields.push({ label: 'Class', value: entity.taxon_class });
+if (entity.taxon_order) fields.push({ label: 'Order', value: entity.taxon_order });
+if (entity.family) fields.push({ label: 'Family', value: entity.family });
+if (entity.genus) fields.push({ label: 'Genus', value: entity.genus });
+
+// Edge-cache the SSR HTML (data refresh = redeploy).
+Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=86400');
+---
+
+<Layout
+  title={entity.scientific_name}
+  description={`${entity.scientific_name}${entity.common_name ? ` (${entity.common_name})` : ''} — ${total_claims} AI-consensus-verified ${total_claims === 1 ? 'claim' : 'claims'}${categories.length > 0 ? ` across ${categories.length} interaction ${categories.length === 1 ? 'category' : 'categories'}` : ''}, with verbatim source quotes and page citations.`}
+>
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Dataset",
+    "name": entity.scientific_name + (entity.common_name ? ` (${entity.common_name})` : ''),
+    "description": `${total_claims} AI-consensus-verified agroecological claims about ${entity.scientific_name}, with verbatim source quotes and page citations.`,
+    "url": `https://aedin.io/entity/${entity.slug}`,
+    "creator": { "@type": "Organization", "name": "AEDIN contributors" },
+    "isAccessibleForFree": true,
+    "keywords": [entity.scientific_name, entity.common_name, entity.bio_category, entity.family].filter(Boolean).join(', ')
+  })} />
+  <div class="max-w-7xl mx-auto px-6 py-10 grid md:grid-cols-[minmax(0,1fr)_20rem] gap-6 md:items-start">
+  <article
+    class="min-w-0"
+    data-pagefind-body
+    data-pagefind-meta={`category:${entity.bio_category ?? 'unknown'}`}
+    data-pagefind-filter={`Category:${entity.bio_category ?? 'unknown'}`}
+  >
+    <header class="mb-8 pb-6 border-b border-nature-700/15">
+      <h1 class="text-3xl italic text-nature-900 mb-1">{entity.scientific_name}</h1>
+      {entity.common_name && <p class="text-lg text-earth-700">{entity.common_name}</p>}
+      {parent && (
+        <p class="text-sm text-earth-700 mt-0.5">
+          {entity.variety_type === 'landrace' ? 'Landrace' : entity.variety_type === 'subsp' ? 'Subspecies' : 'Variety'} of{' '}
+          <a class="italic text-nature-700 hover:underline" href={`/entity/${parent.slug}`}>{parent.scientific_name}</a>
+          {entity.grin_accession && <span class="ml-2 text-earth-600">· GRIN {entity.grin_accession}</span>}
+        </p>
+      )}
+      <dl class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm">
+        {fields.map(f => (
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-earth-700">{f.label}</dt>
+            <dd class="text-sm text-nature-900">{f.value}</dd>
+          </div>
+        ))}
+      </dl>
+      {entity.taxonomy_path && <p class="mt-3 text-xs text-earth-700 font-mono">{entity.taxonomy_path}</p>}
+      {(entity.gbif_key || entity.eppo_code || entity.iucn_id) && (
+        <p class="mt-2 text-xs text-earth-700 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span class="uppercase tracking-wide">External:</span>
+          {entity.gbif_key && (
+            <a href={`https://www.gbif.org/species/${entity.gbif_key}`} class="text-nature-700 hover:underline" rel="noopener" target="_blank">
+              GBIF #{entity.gbif_key}
+            </a>
+          )}
+          {entity.eppo_code && (
+            <a href={`https://gd.eppo.int/taxon/${entity.eppo_code}`} class="text-nature-700 hover:underline" rel="noopener" target="_blank">
+              EPPO {entity.eppo_code}
+            </a>
+          )}
+          {entity.iucn_id && (
+            <a href={`https://www.iucnredlist.org/species/${entity.iucn_id}/0`} class="text-nature-700 hover:underline" rel="noopener" target="_blank">
+              IUCN #{entity.iucn_id}
+            </a>
+          )}
+        </p>
+      )}
+    </header>
+
+    {varietyTotal > 0 && (
+      <section class="mb-10 bg-white border border-nature-700/15 rounded p-4">
+        <h2 class="text-sm uppercase tracking-wide text-earth-700 mb-3">Varieties ({varietyTotal.toLocaleString()})</h2>
+        <ul class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+          {varietyPreview.map((v) => (
+            <li>
+              <a href={`/entity/${v.slug}`} class="block px-3 py-2 border border-nature-700/15 rounded hover:border-nature-700/40 no-underline">
+                <span class="italic text-nature-900 text-sm">{v.scientific_name}</span>
+                {v.variety_type && <span class="ml-1 text-[10px] text-earth-600 uppercase">{v.variety_type}</span>}
+              </a>
+            </li>
+          ))}
+        </ul>
+        {varietyTotal > varietyPreview.length && (
+          <a class="inline-block mt-3 text-sm text-nature-700 hover:underline" href={`/entity/${entity.slug}/varieties`}>See all {varietyTotal.toLocaleString()} →</a>
+        )}
+      </section>
+    )}
+
+    {relatedEntities.length > 0 && (
+      <section class="mb-10 bg-white border border-nature-700/15 rounded p-4">
+        <h2 class="text-sm uppercase tracking-wide text-earth-700 mb-3">Related entities</h2>
+        <p class="text-xs text-earth-700 mb-3">Top entities sharing the most verified claims with <em>{entity.scientific_name}</em>.</p>
+        <ul class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+          {relatedEntities.map(r => (
+            <li>
+              <a href={`/entity/${r.slug}`} class="block px-3 py-2 border border-nature-700/15 rounded hover:border-nature-700/40 transition-colors no-underline">
+                <div class="italic text-nature-900 text-sm leading-snug">{r.scientific_name}</div>
+                {r.common_name && <div class="text-xs text-earth-700 truncate">{r.common_name}</div>}
+                <div class="text-xs text-nature-700 mt-0.5">{r.shared_count} shared {r.shared_count === 1 ? 'claim' : 'claims'}</div>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    <RevisionHistory revisions={revisions} />
+
+    <EntityClaimsTable interactions={interactions} traits={traits} mods={mods} />
+
+    {genusEvidence.length > 0 && (
+      <section class="mb-10 border-t border-dashed border-earth-700/30 pt-6">
+        <h2 class="text-xl font-semibold text-earth-800 mb-1">Genus-level evidence</h2>
+        <p class="text-sm text-earth-700 mb-4">
+          {genusEvidence.length} {genusEvidence.length === 1 ? 'claim' : 'claims'} where the source named the organism only at the
+          genus or collective level (e.g. <em>{entity.genus ?? entity.scientific_name.split(' ')[0]} sp.</em>) and did not determine the species.
+          Listed separately because they apply to the genus, not specifically to <em>{entity.scientific_name}</em>.
+        </p>
+        <ul class="space-y-3">
+          {genusEvidence.map((c: Claim) => {
+            const viaSubject = c.subject_scientific_name;
+            const viaObject = c.object_scientific_name;
+            return (
+              <li class="bg-nature-50/40 border border-earth-700/15 rounded p-4">
+                <div class="text-xs text-earth-700 mb-2">
+                  {c.interaction_type_raw && (<><em>{c.interaction_type_raw.replace(/_/g, ' ')}</em>{' · '}</>)}
+                  <span>
+                    {c.subject_slug ? (
+                      <a href={`/entity/${c.subject_slug}`} class="italic text-earth-800 hover:underline">{viaSubject}</a>
+                    ) : (<span class="italic">{viaSubject}</span>)}
+                    {viaObject && (
+                      <>
+                        {' → '}
+                        {c.object_slug ? (
+                          <a href={`/entity/${c.object_slug}`} class="italic text-earth-800 hover:underline">{viaObject}</a>
+                        ) : (<span class="italic">{viaObject}</span>)}
+                      </>
+                    )}
+                  </span>
+                  {c.effect_direction && (<> · effect: {c.effect_direction}</>)}
+                </div>
+                <blockquote class="text-sm text-nature-900 border-l-2 border-earth-700/40 pl-3 italic mb-2">
+                  &ldquo;{c.source_quote}&rdquo;
+                </blockquote>
+                <div class="text-xs text-earth-700">
+                  {c.source_authors && <span>{c.source_authors}</span>}
+                  {c.source_year && <span> ({c.source_year})</span>}
+                  {c.source_title && (
+                    <>
+                      {' · '}
+                      {c.source_slug ? (
+                        <a href={`/source/${c.source_slug}`} class="text-nature-700 hover:underline">{c.source_title}</a>
+                      ) : (<span>{c.source_title}</span>)}
+                    </>
+                  )}
+                  {c.source_page && <span> · p.&nbsp;{c.source_page}</span>}
+                  <a href={`/claim/${c.id}`} class="ml-2 text-nature-700 hover:underline opacity-60 hover:opacity-100">#{c.id}</a>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    )}
+
+  </article>
+
+  <div class="space-y-4">
+    <EntityEnvelope entity={entity} inherited={inheritedEnv} />
+    <TraitSummary summaries={traitSummaries} />
+    <CiteThis
+      kind="entity"
+      id={entity.slug ?? entity.id}
+      title={entity.scientific_name + (entity.common_name ? ` (${entity.common_name})` : '')}
+      url={`https://aedin.io/entity/${entity.slug}`}
+    />
+    <ReportError context={entity.scientific_name} />
+  </div>
+  </div>
+</Layout>

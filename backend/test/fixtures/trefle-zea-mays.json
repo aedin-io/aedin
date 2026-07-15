@@ -1,0 +1,14 @@
+{
+ "scientific_name": "Zea mays",
+ "duration": null,
+ "specifications": {
+  "growth_habit": "Graminoid",
+  "growth_form": "Single Stem",
+  "maximum_height": { "cm": null },
+  "average_height": { "cm": null }
+ },
+ "growth": {
+  "minimum_root_depth": { "cm": null },
+  "spread": { "cm": 60 }
+ }
+}
