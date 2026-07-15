@@ -66,10 +66,6 @@ The public web surface at [aedin.io](https://aedin.io) is live. The multi-critic
 
 **Important provenance note:** Claims published here are AI-vouched by multi-critic consensus but **not yet human-verified**. Each claim links to its verbatim source quote — verify against the source before publishing or citing in your own work.
 
-## Affiliation
-
-AEDIN is an independent research project by Vivek LeBouef, a graduate student at the University of Guam. It is **not** an official University of Guam project, nor is it endorsed by or affiliated with the University in any official capacity.
-
 ## Contact
 
 [contact@aedin.io](mailto:contact@aedin.io) · [aedin.io](https://aedin.io)
