@@ -23,10 +23,11 @@ authors:
   - family-names: LeBouef
     given-names: Vivek
     orcid: "https://orcid.org/0009-0003-9406-950X"
-    affiliation: "University of Guam, Sustainable Agriculture program"
+    affiliation: "University of Guam (graduate student; independent project, not officially affiliated with the University)"
     email: contact@aedin.io
 repository-code: "https://github.com/aedin-io/aedin"
 url: "https://aedin.io"
+doi: "10.5281/zenodo.21367715"
 license: MIT
 keywords:
   - agroecology
@@ -40,4 +41,4 @@ keywords:
   - llm-extraction
   - open-access-literature
 version: "0.1.0"
-date-released: "2026-05-18"
+date-released: "2026-07-15"
