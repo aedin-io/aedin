@@ -35,6 +35,7 @@ async function freshDb() {
       target_table TEXT, payload TEXT, review_status TEXT,
       ai_vouch_status TEXT, created_at TEXT, reviewed_at TEXT,
       entity_resolution_status TEXT, resolved_subject_entity_id INTEGER, resolved_object_entity_id INTEGER);
+    CREATE UNIQUE INDEX idx_entities_name_variety ON entities(scientific_name, variety_name);
   `);
   await m025(db);
   await m032(db);
@@ -178,6 +179,27 @@ test('resolveEntityForClaim auto-creates TWO distinct cultivars under the same p
   assert.notEqual(rows[0].scientific_name, rows[1].scientific_name);
   assert.equal(rows[0].variety_name, 'Solar Fire');
   assert.equal(rows[1].variety_name, 'Beefsteak');
+});
+
+test('resolveEntityForClaim does NOT crash when the variety already exists under a different (duplicate) parent', async () => {
+  // Reproduces the promote-abort bug: a variety entity exists with the compound
+  // scientific_name "<species> '<cultivar>'" but its parent_entity_id points at a
+  // DIFFERENT species row than getOrCreateEntity resolves the species name to
+  // (the typo/synonym duplicate-species case, e.g. two "Fragaria × ananassa"
+  // rows differing only by the × vs x glyph). The parent-scoped variety lookup
+  // misses it, so the old plain INSERT collided on UNIQUE(scientific_name,
+  // variety_name) and rolled back the whole promote. The resolver must degrade
+  // gracefully — return the existing variety, never throw.
+  const db = await freshDb();
+  await db.run(`INSERT INTO entities (id, scientific_name, bio_category, primary_role) VALUES (100, 'Solanum lycopersicum', 'plantae', 'crop')`);
+  // Pre-existing cultivar under a DIFFERENT (dangling) parent 999
+  await db.run(`INSERT INTO entities (id, scientific_name, variety_name, parent_entity_id, bio_category) VALUES (200, 'Solanum lycopersicum ''Solar Fire''', 'Solar Fire', 999, 'plantae')`);
+  const e = await resolveEntityForClaim(db, 'Solanum lycopersicum', 'Solar Fire');
+  assert.ok(e, 'must return an entity, not null/undefined');
+  assert.equal(e.id, 200, 'should resolve to the existing cultivar row, not crash or duplicate');
+  // and no duplicate cultivar row was created
+  const rows = await db.all(`SELECT id FROM entities WHERE scientific_name = 'Solanum lycopersicum ''Solar Fire''' COLLATE NOCASE`);
+  assert.equal(rows.length, 1, 'must not have inserted a duplicate cultivar');
 });
 
 const { claimEntityFields } = require('./promote-staged-claims');
