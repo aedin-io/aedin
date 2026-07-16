@@ -182,7 +182,7 @@ async function resolveEntityForClaim(db, scientificName, varietyName) {
   // scientific_name is preserved via parent_entity_id, not duplicated here.
   const compoundSci = `${sciTrimmed} '${normalized}'`;
   await db.run(
-    `INSERT INTO entities
+    `INSERT OR IGNORE INTO entities
        (scientific_name, common_name, variety_name, parent_entity_id, bio_category,
         primary_role, source_table, data_completeness, needs_dedup, taxonomic_resolution,
         created_at, updated_at)
@@ -202,6 +202,20 @@ async function resolveEntityForClaim(db, scientificName, varietyName) {
      WHERE parent_entity_id = ? AND variety_name = ? COLLATE NOCASE`,
     [parent.id, normalized]
   );
+  // Fallback: the cultivar may already exist under a DIFFERENT (typo/synonym
+  // duplicate) species parent — two "Fragaria × ananassa" rows differing only by
+  // the × vs x glyph, say. The INSERT OR IGNORE above then no-ops and the
+  // parent-scoped lookup misses. Resolve by the compound scientific_name so the
+  // claim attaches to the existing cultivar instead of aborting the whole promote
+  // on the UNIQUE(scientific_name, variety_name) collision. The duplicate parent
+  // species are a separate dedup concern (both stay flagged needs_dedup).
+  if (!variety) {
+    variety = await db.get(
+      `SELECT id, scientific_name, bio_category, primary_role FROM entities
+       WHERE scientific_name = ? COLLATE NOCASE AND variety_name = ? COLLATE NOCASE`,
+      [compoundSci, normalized]
+    );
+  }
   return variety;
 }
 
