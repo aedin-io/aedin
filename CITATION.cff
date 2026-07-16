@@ -27,6 +27,10 @@ authors:
 repository-code: "https://github.com/aedin-io/aedin"
 url: "https://aedin.io"
 doi: "10.5281/zenodo.21367715"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.21385401"
+    description: "Verified corpus dataset (claims, entities, and trait claims)"
 license: MIT
 keywords:
   - agroecology

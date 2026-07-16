@@ -1,6 +1,6 @@
 # AEDIN
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![Data License: CC BY 4.0](https://img.shields.io/badge/Data%20License-CC%20BY%204.0-green.svg)](LICENSE-DATA) [![Website](https://img.shields.io/badge/website-aedin.io-brightgreen.svg)](https://aedin.io) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21367715.svg)](https://doi.org/10.5281/zenodo.21367715)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![Data License: CC BY 4.0](https://img.shields.io/badge/Data%20License-CC%20BY%204.0-green.svg)](LICENSE-DATA) [![Website](https://img.shields.io/badge/website-aedin.io-brightgreen.svg)](https://aedin.io) [![Software DOI](https://img.shields.io/badge/Software%20DOI-10.5281%2Fzenodo.21367715-blue.svg)](https://doi.org/10.5281/zenodo.21367715) [![Dataset DOI](https://img.shields.io/badge/Dataset%20DOI-10.5281%2Fzenodo.21385401-blue.svg)](https://doi.org/10.5281/zenodo.21385401)
 
 **AEDIN** (AgroEcological Database of Interactions) is an open agroecological knowledge base for academic researchers and AI consumer applications. It extracts atomic ecological claims — pest, pathogen, beneficial-insect, pollinator, mycorrhizal, soil, and crop-trait relationships — from open-access scientific literature using a large-language-model extraction pipeline, then verifies each claim through a **multi-critic AI consensus**: two independent specialty critics (an agroecologist plus a domain expert) must agree on plausibility, with no implausible verdict, before a claim is promoted to public visibility.
 
@@ -52,7 +52,7 @@ You'll need a recent Node.js (≥ 20). The backend reads a curated SQLite corpus
 
 ## Citing AEDIN
 
-If you use AEDIN's data, claims, or methodology in your research, please cite it. The recommended citation is in [CITATION.cff](CITATION.cff); GitHub renders a "Cite this repository" button you can use directly. This release is archived on Zenodo with a citable DOI: [10.5281/zenodo.21367715](https://doi.org/10.5281/zenodo.21367715).
+If you use AEDIN's data, claims, or methodology in your research, please cite it. The recommended citation is in [CITATION.cff](CITATION.cff); GitHub renders a "Cite this repository" button you can use directly. Two citable Zenodo DOIs are available — the **software archive** ([10.5281/zenodo.21367715](https://doi.org/10.5281/zenodo.21367715)) and the **verified corpus dataset** ([10.5281/zenodo.21385401](https://doi.org/10.5281/zenodo.21385401)).
 
 ## License posture (three layers)
 
