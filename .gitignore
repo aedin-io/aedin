@@ -112,3 +112,9 @@ backend/backups/
 # Critic-router fitness harness — regenerable baseline output (numbers live in the
 # graduation ledger + journal; the JSON is reproducible via `npm run eval-router`)
 backend/router-eval-*.json
+
+# OKF knowledge bundle — internal-only descriptive map + engineering log.
+# Deliberately NOT published to the public repo: log.md is session engineering
+# exhaust and some decision concepts describe monetization/anti-scraping strategy.
+# Kept on the internal working history; publish provenance docs deliberately if ever wanted.
+.okf/
