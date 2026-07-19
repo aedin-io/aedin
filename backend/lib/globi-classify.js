@@ -76,6 +76,14 @@ const VARIABLE_TYPES = new Set([
 ]);
 const ANIMAL_CATEGORIES = new Set(['invertebrate', 'vertebrate']);
 const PEST_CATEGORIES = new Set(['invertebrate', 'fungi', 'microbe']);
+// Bee families. A bee's "host plant" (GloBI `hasHost`) is the plant it FORAGES
+// on — never a pest association. Family is the fallback signal because the
+// family-floor role pass left much of the corpus primary_role='unclassified',
+// so a role-only guard would miss most of them.
+const POLLINATOR_FAMILIES = new Set([
+  'apidae', 'halictidae', 'andrenidae', 'megachilidae', 'colletidae',
+  'melittidae', 'stenotritidae',
+]);
 
 const GENBANK_RE = /^[A-Z]{2}\d{6}/;
 function isGarbage(name) {
@@ -128,6 +136,8 @@ function resolveVariable(itype, src, tgt) {
   const tgtIsPlant = tgtBio === 'plantae';
   const srcIsPestCategory = PEST_CATEGORIES.has(srcBio);  // invertebrate, fungi, microbe
   const tgtIsPestCategory = PEST_CATEGORIES.has(tgtBio);
+  const srcIsPollinator = (src.primary_role || '').toLowerCase() === 'pollinator'
+    || POLLINATOR_FAMILIES.has((src.family || '').toLowerCase());
 
   switch (itype) {
 
@@ -237,6 +247,13 @@ function resolveVariable(itype, src, tgt) {
                path: `${srcBio} hosting ${tgtBio} → neutral` };
 
     case 'hasHost':
+      // A POLLINATOR's "host plant" is its FORAGE plant — GloBI uses `hasHost`
+      // broadly, so this MUST be checked before the generic invertebrate rule
+      // below, which would otherwise brand every bee→plant record a pest
+      // (the pollinator-as-pest artifact: ~410 bee claims).
+      if (srcIsPollinator && tgtIsPlant)
+        return { category: 'pollination', effect: 'beneficial', weight: 2.0, confidence: 'resolved',
+                 path: `pollinator has host plant → pollination/foraging` };
       // Fungi/microbe has host plant = pathogen pressure
       if ((srcBio === 'fungi' || srcBio === 'microbe') && tgtIsPlant)
         return { category: 'pathogen_pressure', effect: 'harmful', weight: -3.0, confidence: 'resolved',
