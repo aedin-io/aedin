@@ -73,6 +73,7 @@ async function preloadRules(db) {
   // Build lookup maps for O(1) matching on common rule types
   const speciesMap = new Map();  // scientific_name → rule
   const genusMap = new Map();    // genus → rule
+  const subfamilyMap = new Map();// subfamily → rule
   const familyMap = new Map();   // family → [rule, ...] (multiple: biocontrol_family + taxonomy_family)
   const bioMap = new Map();      // bio_category → rule
   const classRules = [];         // taxon_path contains — must scan
@@ -86,6 +87,9 @@ async function preloadRules(db) {
         break;
       case 'taxonomy_genus':
         if (!genusMap.has(mv)) genusMap.set(mv, rule);
+        break;
+      case 'taxonomy_subfamily':
+        if (!subfamilyMap.has(mv)) subfamilyMap.set(mv, rule);
         break;
       case 'biocontrol_family':
       case 'taxonomy_family': {
@@ -106,7 +110,7 @@ async function preloadRules(db) {
     }
   }
 
-  return { speciesMap, genusMap, familyMap, classRules, bioMap, profileRules, allRules: rules };
+  return { speciesMap, genusMap, subfamilyMap, familyMap, classRules, bioMap, profileRules, allRules: rules };
 }
 
 /**
@@ -116,8 +120,9 @@ async function preloadRules(db) {
  * Priority order:
  *   1. Species-level (scientific_name match, priority 90)
  *   2. Genus-level (genus match, priority 70)
- *   3. Biocontrol family override (priority 55)
- *   4. Family-level (family match, priority 50)
+ *   3. Subfamily-level (subfamily match, priority 60)
+ *   4. Biocontrol family override (priority 55)
+ *   5. Family-level (family match, priority 50)
  *   5. Class/order/kingdom (taxon_path contains, priority 30)
  *   6. Bio_category default (priority 10)
  *
@@ -131,6 +136,7 @@ async function evaluateRules(db, entity, profile, cache) {
   const name = (entity.scientific_name || '').toLowerCase();
   const genus = (entity.genus || name.split(' ')[0] || '').toLowerCase();
   const family = (entity.family || '').toLowerCase();
+  const subfamily = (entity.subfamily || '').toLowerCase();
   const bio = (entity.bio_category || '').toLowerCase();
 
   // Build searchPath for class-level rules
@@ -164,7 +170,19 @@ async function evaluateRules(db, entity, profile, cache) {
   const genusRule = cache.genusMap.get(genus);
   if (genusRule) return makeResult(genusRule);
 
-  // 3. Family match — pick highest priority among biocontrol_family (55) and taxonomy_family (50)
+  // 3. Subfamily match (priority 60). Ranked ABOVE family because the whole
+  // reason the tier exists is facts that are true at subfamily rank and FALSE
+  // at family rank — Miletinae larvae are predators inside herbivorous
+  // Lycaenidae. If family won, the store could not express the correction.
+  // An entity with no subfamily simply falls through: subfamily is NULL for
+  // ~94k rows because OTT carries none for them, which is an ABSENCE of
+  // information, never a reason to withhold the family rule.
+  if (subfamily) {
+    const subfamilyRule = cache.subfamilyMap && cache.subfamilyMap.get(subfamily);
+    if (subfamilyRule) return makeResult(subfamilyRule);
+  }
+
+  // 4. Family match — pick highest priority among biocontrol_family (55) and taxonomy_family (50)
   const familyRules = cache.familyMap.get(family);
   if (familyRules && familyRules.length > 0) {
     // Already sorted by priority DESC from the original query

@@ -5,10 +5,12 @@ const path = require('path');
 const BACKEND_DIR = path.resolve(__dirname, '..');
 const CORPUS_DB = path.join(BACKEND_DIR, 'aedin.sqlite');
 const RAW_DB = path.join(BACKEND_DIR, 'globi.sqlite');
+const OTT_DB = path.join(BACKEND_DIR, 'ott.sqlite');
 const ATTACH_RAW_SQL = `ATTACH DATABASE '${RAW_DB}' AS raw`;
 const ATTACH_CORPUS_SQL = `ATTACH DATABASE '${CORPUS_DB}' AS corpus`;
+const ATTACH_OTT_SQL = `ATTACH DATABASE '${OTT_DB}' AS ott`;
 const RAW_TABLES = new Set([
   'interactions', 'interaction_locality_coverage', 'species_locality_coverage',
   'crop_locality_coverage', 'globi_fetch_log', 'claim_remap_log',
 ]);
-module.exports = { CORPUS_DB, RAW_DB, BACKEND_DIR, ATTACH_RAW_SQL, ATTACH_CORPUS_SQL, RAW_TABLES };
+module.exports = { CORPUS_DB, RAW_DB, OTT_DB, BACKEND_DIR, ATTACH_RAW_SQL, ATTACH_CORPUS_SQL, ATTACH_OTT_SQL, RAW_TABLES };
