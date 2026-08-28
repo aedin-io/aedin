@@ -4,7 +4,7 @@
  * publications via the publications-press.uog.edu Laravel API, then download
  * the ag/IPM-scope PDFs to literature/extension/ for the Pass-13+ ingest pipeline.
  *
- * API discovery notes (see GUAM-REINGEST-RESUME.md for the Pass-12 playbook):
+ * API discovery notes:
  *   - publications-press.uog.edu is a Nuxt SPA backed by a Laravel API. The
  *     SPA viewer URL (/ceo/technicalreport/<slug>/<id>) is JS-only, but the
  *     underlying API is plain JSON over POST.
