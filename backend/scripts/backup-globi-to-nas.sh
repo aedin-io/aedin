@@ -12,12 +12,12 @@
 #
 # Schedule via cron:
 #   crontab -e
-#   0 3 * * * /home/beef/projects/agroeco/backend/scripts/backup-globi-to-nas.sh >> /home/beef/.local/share/agroeco-backup.log 2>&1
+#   0 3 * * * /path/to/aedin/backend/scripts/backup-globi-to-nas.sh >> "$HOME"/.local/share/aedin-backup.log 2>&1
 
 set -euo pipefail
 
 # ─── Defaults (override in ~/.agroeco-backup.conf) ───────────────────────
-SOURCE_DB="/home/beef/projects/agroeco/backend/globi.sqlite"
+SOURCE_DB="$(cd "$(dirname "$0")/.." && pwd)/globi.sqlite"
 NAS_HOST="REPLACE_WITH_NAS_HOSTNAME_OR_IP"   # e.g. 192.168.1.100 or yournas.local
 NAS_USER="REPLACE_WITH_NAS_USERNAME"          # your Synology DSM user
 NAS_PATH="/volume1/backups/agroeco"           # path on the NAS

@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 DB="${SMOKE_DB:-${TMPDIR:-/tmp}/globi-variety-e2e.sqlite}"
-PROD_DB="${PROD_DB:-/home/beef/projects/agroeco/backend/globi.sqlite}"
+PROD_DB="${PROD_DB:-$(dirname "$0")/globi.sqlite}"
 
 if [ ! -f "$PROD_DB" ]; then
   echo "ERROR: production DB not found at $PROD_DB"

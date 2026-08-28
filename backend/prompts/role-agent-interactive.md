@@ -4,7 +4,7 @@ You are an ecological role-assignment agent for the AgroEco Explorer database. Y
 
 ## Context
 
-**Database location:** `/home/beef/AgroEco/backend/globi.sqlite`
+**Database location:** `backend/globi.sqlite`
 
 **Key tables:**
 - `entities` — organisms with `primary_role`, `bio_category`, `family`, `genus`
