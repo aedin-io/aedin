@@ -146,3 +146,50 @@ test('inferLifecycleRoles: Vespidae (wasps) returns null — too varied to infer
   });
   assert.equal(r, null);
 });
+
+// --- subfamily-keyed corrections (2026-08-25, unblocked by entities.subfamily) ---
+
+test('Miletinae larvae are PREDATORS, not the herbivores Lycaenidae implies', () => {
+  // Spalgis epius eats mealybugs; Feniseca tarquinius eats aphids. Inheriting
+  // 'herbivore' from Lycaenidae labels a biocontrol agent a pest.
+  const r = inferLifecycleRoles({
+    scientific_name: 'Spalgis epius', family: 'Lycaenidae', subfamily: 'Miletinae',
+    taxonomy_path: 'Animalia|Arthropoda|Insecta|Lepidoptera|Lycaenidae',
+  });
+  assert.equal(r.larval_role, 'predator');
+  assert.equal(r.adult_role, 'nectarivore', 'only the larval stage is carnivorous');
+});
+
+test('Lymantriinae adults are aphagous, unlike the rest of Erebidae', () => {
+  const r = inferLifecycleRoles({
+    scientific_name: 'Orgyia leucostigma', family: 'Erebidae', subfamily: 'Lymantriinae',
+    taxonomy_path: 'Animalia|Arthropoda|Insecta|Lepidoptera|Erebidae',
+  });
+  assert.equal(r.adult_role, 'non_feeding');
+  assert.equal(r.larval_role, 'herbivore');
+});
+
+test('a sibling subfamily in the same family keeps the family default', () => {
+  const r = inferLifecycleRoles({
+    scientific_name: 'Polyommatus icarus', family: 'Lycaenidae', subfamily: 'Polyommatinae',
+    taxonomy_path: 'Animalia|Arthropoda|Insecta|Lepidoptera|Lycaenidae',
+  });
+  assert.deepEqual(r, { larval_role: 'herbivore', adult_role: 'nectarivore' });
+});
+
+test('a NULL subfamily is an abstention, not a negative — family default stands', () => {
+  // entities.subfamily is NULL for ~94k rows because OTT has no subfamily for
+  // them, NOT because they lack one. It must never be read as "not Miletinae".
+  const r = inferLifecycleRoles({
+    scientific_name: 'Some lycaenid', family: 'Lycaenidae', subfamily: null,
+    taxonomy_path: 'Animalia|Arthropoda|Insecta|Lepidoptera|Lycaenidae',
+  });
+  assert.deepEqual(r, { larval_role: 'herbivore', adult_role: 'nectarivore' });
+});
+
+test('a subfamily correction still requires the entity to be Lepidoptera', () => {
+  // Guards against a same-named subfamily elsewhere in the tree hijacking the rule.
+  assert.equal(inferLifecycleRoles({
+    scientific_name: 'Not a moth', family: 'Curculionidae', subfamily: 'Miletinae',
+  }), null);
+});

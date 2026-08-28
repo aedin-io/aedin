@@ -37,8 +37,28 @@ const LEPIDOPTERA_NON_FEEDING_ADULT_FAMILIES = new Set([
   'Endromidae',      // Kentish glory moths
   'Brahmaeidae',     // brahmin moths
   'Eupterotidae',    // monkey moths
-  // Note: Lymantriinae (within Erebidae) also non-feeding but we'd need
-  // subfamily granularity which entities.family doesn't carry yet.
+]);
+
+// Corrections that are true at SUBFAMILY rank and FALSE at family rank, so a
+// family-keyed rule asserts the opposite of the truth for these. Unblocked by
+// entities.subfamily (migration 078, backfilled from the OTT backbone).
+//
+// A NULL subfamily is an ABSTENTION, not a negative: ~94k entities have no
+// subfamily because OTT does not carry one for them, not because they lack one.
+// So these Sets only ever ADD a correction; they never withhold the default.
+const LEPIDOPTERA_NON_FEEDING_ADULT_SUBFAMILIES = new Set([
+  'Lymantriinae',    // tussock/gypsy moths — aphagous adults. OTT still keeps
+                     // the older family-rank concept Lymantriidae, which is why
+                     // lib/subfamily-source.js has to bridge the two vintages.
+]);
+
+// Subfamilies whose LARVAE are carnivorous inside an otherwise herbivorous
+// family. Getting this wrong is not a small error: it files a biocontrol agent
+// as a crop pest, the same failure class as the GloBI pollinator-as-pest bug.
+const LEPIDOPTERA_PREDACEOUS_LARVA_SUBFAMILIES = new Set([
+  'Miletinae',       // harvesters — larvae eat aphids, scale insects, mealybugs
+                     // (Spalgis epius on mealybugs, Feniseca tarquinius on
+                     // woolly aphids, Thestor in ant nests).
 ]);
 
 // True bee families (Anthophila clade within Hymenoptera). Adults are
@@ -56,6 +76,7 @@ const HYMENOPTERA_BEE_FAMILIES = new Set([
 
 const LEPIDOPTERA_ROLES_DEFAULT = { larval_role: 'herbivore', adult_role: 'nectarivore' };
 const LEPIDOPTERA_ROLES_NONFEEDING = { larval_role: 'herbivore', adult_role: 'non_feeding' };
+const LEPIDOPTERA_ROLES_PREDACEOUS_LARVA = { larval_role: 'predator', adult_role: 'nectarivore' };
 const HYMENOPTERA_BEE_ROLES = { larval_role: 'fed_by_adults', adult_role: 'pollinator' };
 
 function inferLifecycleRoles(entity) {
@@ -63,6 +84,13 @@ function inferLifecycleRoles(entity) {
   const tax = entity.taxonomy_path;
   const isLep = (typeof tax === 'string' && /\blepidoptera\b/i.test(tax)) || LEPIDOPTERA_FAMILIES.has(entity.family);
   if (isLep) {
+    // Subfamily beats family: it is the finer, and here the contradicting, fact.
+    if (LEPIDOPTERA_PREDACEOUS_LARVA_SUBFAMILIES.has(entity.subfamily)) {
+      return { ...LEPIDOPTERA_ROLES_PREDACEOUS_LARVA };
+    }
+    if (LEPIDOPTERA_NON_FEEDING_ADULT_SUBFAMILIES.has(entity.subfamily)) {
+      return { ...LEPIDOPTERA_ROLES_NONFEEDING };
+    }
     if (LEPIDOPTERA_NON_FEEDING_ADULT_FAMILIES.has(entity.family)) {
       return { ...LEPIDOPTERA_ROLES_NONFEEDING };
     }
@@ -81,5 +109,7 @@ module.exports = {
   inferLifecycleRoles,
   LEPIDOPTERA_FAMILIES,
   LEPIDOPTERA_NON_FEEDING_ADULT_FAMILIES,
+  LEPIDOPTERA_NON_FEEDING_ADULT_SUBFAMILIES,
+  LEPIDOPTERA_PREDACEOUS_LARVA_SUBFAMILIES,
   HYMENOPTERA_BEE_FAMILIES,
 };
