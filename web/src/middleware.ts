@@ -1,21 +1,12 @@
 import { defineMiddleware } from 'astro:middleware';
+import { isBlockedForAi } from './lib/ai-agents';
 
 // --- AI access policy -------------------------------------------------------
-// AEDIN's knowledge base is the commercial data product; AI agents get only the
-// public marketing surface. robots.txt declares this for compliant bots; this
-// worker enforces it for AI user-agents that ignore robots.txt (defense-in-depth
-// alongside the Cloudflare edge WAF rule). NOTE: only SSR routes reach this
-// worker — static/prerendered pages (about, terms, atlas, claim/source/region/
-// interaction) are covered by robots.txt + the edge rule, not here.
-//
-// Known AI crawler / agent user-agent tokens. These substrings do not appear in
-// human browser UAs, so the match is specific (no false positives on real users).
-const AI_BOT_UA =
-  /GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|anthropic-ai|Claude-Web|CCBot|PerplexityBot|Perplexity-User|Bytespider|Amazonbot|Meta-ExternalAgent|meta-externalfetcher|FacebookBot|Diffbot|Omgili|cohere-ai|YouBot|Applebot-Extended|Google-Extended|Timpibot|ImagesiftBot/i;
-
-// The only paths an AI agent may reach. End-to-end exact match (no prefix) so the
-// `/api/*.json` data endpoints are NOT reachable just because `/api` is allowed.
-const AI_ALLOWED_PATHS = new Set(['/', '/about', '/about/', '/api', '/api/']);
+// Retrieval agents (AI search answering a person's query) get the full site;
+// bulk training crawlers get only the marketing pages. See lib/ai-agents.ts for
+// the rationale. robots.txt declares the same split for compliant bots, and the
+// Cloudflare edge (WAF + rate-limit rules) enforces it for static pages, which
+// never reach this worker.
 
 // Agent discovery via RFC 8288 Link response headers. Runs for every SSR
 // response. Static prerendered pages bypass the worker, so they don't get these.
@@ -24,20 +15,19 @@ const BASE_LINKS = [
   '<https://creativecommons.org/licenses/by/4.0/>; rel="license"',
 ];
 
-// Only the homepage content-negotiates a text/markdown representation now (the
-// front page is AI-accessible). Entity pages no longer advertise or serve it —
-// they're part of the gated data product.
-const negotiable = (pathname: string): boolean => pathname === '/';
+// SSR pages that content-negotiate a text/markdown representation.
+const negotiable = (pathname: string): boolean => pathname === '/' || pathname.startsWith('/entity/');
 
 export const onRequest = defineMiddleware(async (ctx, next) => {
-  // Block known AI user-agents from everything except the marketing pages,
-  // before doing any rendering work.
+  // Block training crawlers from everything except the marketing pages, before
+  // doing any rendering work.
   const ua = ctx.request.headers.get('user-agent') ?? '';
-  if (AI_BOT_UA.test(ua) && !AI_ALLOWED_PATHS.has(ctx.url.pathname)) {
+  if (isBlockedForAi(ua, ctx.url.pathname)) {
     return new Response(
-      'This page is part of the AEDIN knowledge base and is not available to ' +
-        'automated AI agents. Programmatic access is offered through the AEDIN ' +
-        'API — see https://aedin.io/api\n',
+      'AI training crawlers are not served the AEDIN knowledge base. The full ' +
+        'corpus is CC BY 4.0 and downloadable from Zenodo ' +
+        '(https://doi.org/10.5281/zenodo.21385401); live programmatic access is ' +
+        'offered through the AEDIN API — see https://aedin.io/api\n',
       {
         status: 403,
         headers: {

@@ -66,6 +66,10 @@ The public web surface at [aedin.io](https://aedin.io) is live. The multi-critic
 
 **Important provenance note:** Claims published here are AI-vouched by multi-critic consensus but **not yet human-verified**. Each claim links to its verbatim source quote — verify against the source before publishing or citing in your own work.
 
+## How AEDIN is funded
+
+AEDIN is open source and open data, and it will stay that way. The verified corpus is published under CC BY 4.0 as periodic Zenodo snapshots, and the full pipeline is MIT. Paid services fund the work: a live metered API and MCP endpoint, private extraction of your own literature, human expert review of extracted claims, and institutional support. AI search and answer engines may read and cite the site; bulk training crawlers are pointed to the Zenodo snapshot instead. See [docs/business-model.md](docs/business-model.md) (draft).
+
 ## Contact
 
 [contact@aedin.io](mailto:contact@aedin.io) · [aedin.io](https://aedin.io)

@@ -1,5 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import { negotiateMarkdown, entityMarkdown } from '../../lib/agent-markdown';
 import { getEntityBySlug, getInteractionRows, getTraitRows, getTraitsForEntity, getClaimRevisionsForEntity, getRelatedEntities, getGenusLevelEvidence, getRevisions, getParentSummary, getVarietyTypeCounts, getVarietiesForSpecies, getCanonicalSlug, resolveMergeRedirect } from '../../lib/queries-d1';
 import { summarizeTraits } from '../../lib/trait-summary';
 import type { Claim } from '../../lib/entity-types';
@@ -65,10 +66,14 @@ for (const t of traits) {
   }
 }
 
-// NOTE: entity pages are the commercial data product and are NOT served to AI
-// agents (see public/robots.txt + middleware.ts AI-UA block). The agent-markdown
-// dossier (entityMarkdown in lib/agent-markdown.ts) is intentionally retained for
-// the future *metered* MCP/API tier — it is just no longer handed out for free here.
+// Markdown for Agents: AI retrieval agents (and anything sending
+// `Accept: text/markdown`) get a cited markdown dossier of the same data.
+// Bulk training crawlers are still blocked in middleware.ts; bulk access is
+// rate-limited at the edge and offered through the metered API.
+const agentMd = negotiateMarkdown(Astro.request, () =>
+  entityMarkdown(entity, { totalClaims: total_claims, interactions, traits, related: relatedEntities }),
+);
+if (agentMd) return agentMd;
 
 // Genus-level / collective evidence whose species the source left undetermined
 // (Genus sp. / spp.). Shown in a separate, clearly-labelled section so the
