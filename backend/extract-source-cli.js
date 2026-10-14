@@ -23,7 +23,7 @@ const fs = require('fs');
 const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const { extractSource } = require('./extract-source');
-const { parseFlags: parseGuardFlags, preflightConfirm, createBudgetGuard, isFatalGuardError } = require('./lib/cost-guard');
+const { parseFlags: parseGuardFlags, preflightConfirm, createBudgetGuard, isFatalGuardError, writeReportJson } = require('./lib/cost-guard');
 const { CORPUS_DB } = require('./lib/db-paths.cjs');
 
 const DB_PATH = CORPUS_DB;
@@ -126,6 +126,7 @@ if (files.length === 0) {
   console.log(`  cumulative spend:      $${report.cumulativeCostUSD.toFixed(4)} / ceiling $${report.maxSpend.toFixed(2)}`);
   console.log(`  successes / failures:  ${report.totalSuccesses} / ${report.totalFailures}`);
   console.log(`  total tokens (in/out): ${report.totalInputTokens} / ${report.totalOutputTokens}`);
+  writeReportJson(argv, report, { script: 'extract-source-cli', files, totalStaged });
   await db.close();
 })().catch(e => {
   if (isFatalGuardError(e)) { console.error('\n' + e.message); process.exit(2); }

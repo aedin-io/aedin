@@ -118,3 +118,6 @@ backend/router-eval-*.json
 # exhaust and some decision concepts describe monetization/anti-scraping strategy.
 # Kept on the internal working history; publish provenance docs deliberately if ever wanted.
 .okf/
+
+# Pipeline cost measurement reports (backend/measure-pipeline-cost.js)
+backend/cost-measurements/

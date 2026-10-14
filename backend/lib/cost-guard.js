@@ -216,7 +216,26 @@ function isFatalGuardError(e) {
   return Boolean(e && e.fatal);
 }
 
+/**
+ * writeReportJson(argv, report, extra) — if `--report-json=<path>` is in argv,
+ * write the guard report (plus caller context) there as JSON. Used by
+ * measure-pipeline-cost.js to read exact per-step spend from each paid CLI.
+ * No-op without the flag. Never throws: a report-write failure must not turn
+ * a completed paid run into an error exit.
+ */
+function writeReportJson(argv, report, extra = {}) {
+  const a = argv.find(s => s.startsWith('--report-json='));
+  if (!a) return;
+  const file = a.slice('--report-json='.length);
+  try {
+    require('fs').writeFileSync(file, JSON.stringify({ ...extra, ...report }, null, 2));
+  } catch (e) {
+    console.error(`[cost-guard] could not write --report-json ${file}: ${e.message}`);
+  }
+}
+
 module.exports = {
+  writeReportJson,
   parseFlags,
   preflightConfirm,
   createBudgetGuard,

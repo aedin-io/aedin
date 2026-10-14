@@ -6,7 +6,25 @@ what a snapshot can't give you: freshness, hosted access, private extraction,
 human expert review, and support.
 
 Status: **draft for discussion.** The prices below are estimates and must be
-re-derived from measured pipeline cost (see "Cost basis") before launch.
+re-derived from measured pipeline cost (see "Measured costs") before launch.
+
+## Measured costs
+
+Not measured yet. Run on a machine with the corpus DB, the PDFs and `backend/.env`:
+
+```bash
+cd backend
+node measure-pipeline-cost.js --dry-run --sample=manifest        # page counts, $0
+node measure-pipeline-cost.js --sample=manifest --max-total-spend=15
+# or your own representative papers:
+node measure-pipeline-cost.js --max-total-spend=15 path/to/*.pdf
+```
+
+The report (`backend/cost-measurements/<timestamp>.md`, gitignored) gives the
+median/P90 cost per page and per passed claim, and the spend split across
+extraction, first-pass vouch and multi-critic. Paste its summary here and set
+the per-page credit price from the P90. Chat cost stays an estimate until chat
+exists.
 
 ## Model
 

@@ -28,7 +28,7 @@ const fs = require('fs');
 const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const Anthropic = require('@anthropic-ai/sdk');
-const { parseFlags: parseGuardFlags, preflightConfirm, createBudgetGuard, isFatalGuardError } = require('./lib/cost-guard');
+const { parseFlags: parseGuardFlags, preflightConfirm, createBudgetGuard, isFatalGuardError, writeReportJson } = require('./lib/cost-guard');
 const { CORPUS_DB } = require('./lib/db-paths.cjs');
 
 const DB_PATH = CORPUS_DB;
@@ -211,6 +211,7 @@ async function mapWithConcurrency(items, fn, concurrency) {
     console.log(`  cumulative spend:      $${report.cumulativeCostUSD.toFixed(4)} / ceiling $${report.maxSpend.toFixed(2)}`);
     console.log(`  successes / failures:  ${report.totalSuccesses} / ${report.totalFailures}`);
     console.log(`  total tokens (in/out): ${report.totalInputTokens} / ${report.totalOutputTokens}`);
+    writeReportJson(args, report, { script: 'vouch-staged-claims', sourceId: SOURCE_ID || null });
   }
 
   await db.close();
@@ -221,6 +222,7 @@ async function mapWithConcurrency(items, fn, concurrency) {
     if (guard) {
       const report = guard.getReport();
       console.error(`[cost-guard] spend at abort: $${report.cumulativeCostUSD.toFixed(4)} | failures: ${report.totalFailures} | successes: ${report.totalSuccesses}`);
+      writeReportJson(args, report, { script: 'vouch-staged-claims', sourceId: SOURCE_ID || null, aborted: true });
     }
     process.exit(2);
   }

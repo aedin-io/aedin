@@ -52,7 +52,7 @@ const { CORPUS_DB } = require('./lib/db-paths.cjs');
 
 const { buildCriticPrompt } = require('./lib/critic-prompts');
 const { pickDomainCritic } = require('./lib/critic-router');
-const { parseFlags: parseGuardFlags, preflightConfirm, createBudgetGuard, isFatalGuardError } = require('./lib/cost-guard');
+const { parseFlags: parseGuardFlags, preflightConfirm, createBudgetGuard, isFatalGuardError, writeReportJson } = require('./lib/cost-guard');
 
 const DB_PATH = CORPUS_DB;
 const client = new Anthropic();
@@ -311,6 +311,7 @@ async function mapWithConcurrency(items, fn, concurrency) {
     console.log(`  cumulative spend:      $${report.cumulativeCostUSD.toFixed(4)} / ceiling $${report.maxSpend.toFixed(2)}`);
     console.log(`  successes / failures:  ${report.totalSuccesses} / ${report.totalFailures}`);
     console.log(`  total tokens (in/out): ${report.totalInputTokens} / ${report.totalOutputTokens}`);
+    writeReportJson(args, report, { script: 'vouch-multi-critic', sourceId: SOURCE_ID || null });
   }
 
   console.log('\nDone.');
@@ -320,6 +321,7 @@ async function mapWithConcurrency(items, fn, concurrency) {
     if (guard) {
       const report = guard.getReport();
       console.error(`[cost-guard] spend at abort: $${report.cumulativeCostUSD.toFixed(4)} | failures: ${report.totalFailures} | successes: ${report.totalSuccesses}`);
+      writeReportJson(args, report, { script: 'vouch-multi-critic', sourceId: SOURCE_ID || null, aborted: true });
     }
     process.exit(2);
   }

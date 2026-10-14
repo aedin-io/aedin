@@ -149,3 +149,15 @@ test('isFatalGuardError discriminates guard errors from generic errors', () => {
   catch (e) { assert.equal(isFatalGuardError(e), true); return; }
   assert.fail('should have thrown');
 });
+
+test('writeReportJson: writes report + context only when --report-json is passed', () => {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const { writeReportJson } = require('./cost-guard');
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'cg-')), 'r.json');
+  writeReportJson([], { cumulativeCostUSD: 1 });
+  assert.equal(fs.existsSync(file), false);
+  writeReportJson([`--report-json=${file}`], { cumulativeCostUSD: 1.25 }, { script: 'x', sourceId: 7 });
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), { script: 'x', sourceId: 7, cumulativeCostUSD: 1.25 });
+});
