@@ -1,0 +1,73 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { accountsEnv } from '../lib/accounts/server';
+
+export const prerender = false;
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect('/login?next=/admin');
+if (user.role !== 'admin') return new Response('Not found', { status: 404 });
+const env = accountsEnv(Astro.locals)!;
+const q = (Astro.url.searchParams.get('q') ?? '').trim();
+
+const users = (await env.ACCOUNTS.prepare(
+  `SELECT u.id, u.email, u.name, u.academicVerified, u.role, u.createdAt,
+          COALESCE(s.plan, 'free') AS plan, COALESCE(s.status, 'none') AS status,
+          (SELECT COALESCE(SUM(delta), 0) FROM credit_ledger l WHERE l.user_id = u.id) AS credits
+     FROM "user" u LEFT JOIN subscription s ON s.user_id = u.id
+    WHERE ? = '' OR u.email LIKE '%' || ? || '%' OR u.name LIKE '%' || ? || '%'
+    ORDER BY u.createdAt DESC LIMIT 100`,
+).bind(q, q, q).all<any>()).results ?? [];
+
+// Waitlist lives in the corpus D1 (see d1/waitlist.sql).
+let waitlist: { email: string; use_cases: string | null; created_at: string }[] = [];
+try {
+  waitlist = (await (Astro.locals as any).runtime.env.DB.prepare(
+    'SELECT email, use_cases, created_at FROM waitlist ORDER BY created_at DESC LIMIT 50',
+  ).all()).results ?? [];
+} catch { /* table not present locally */ }
+const msg = Astro.url.searchParams.get('msg');
+---
+
+<Layout title="Admin" noindex>
+  <article class="max-w-5xl mx-auto px-6 py-10 space-y-10">
+    <h1 class="text-2xl font-semibold text-nature-900">Admin</h1>
+    {msg && <p class="rounded border border-nature-700/30 bg-nature-50 px-4 py-2 text-sm">{msg}</p>}
+
+    <section>
+      <form class="flex gap-2"><input name="q" value={q} placeholder="Search email or name" class="rounded border border-nature-700/30 px-2 py-1 text-sm" /><button class="text-sm underline">Search</button></form>
+      <table class="mt-3 w-full text-sm">
+        <thead><tr class="text-left text-xs text-earth-700"><th>User</th><th>Plan</th><th class="text-right">Credits</th><th>Academic</th><th>Adjust credits</th></tr></thead>
+        <tbody>
+          {users.map(u => (
+            <tr class="border-t border-nature-700/10 align-top">
+              <td class="py-2">{u.email}<div class="text-xs text-earth-700">{u.name} · {String(u.createdAt).slice(0, 10)}{u.role === 'admin' ? ' · admin' : ''}</div></td>
+              <td>{u.plan}<div class="text-xs text-earth-700">{u.status}</div></td>
+              <td class="text-right tabular-nums">{u.credits}</td>
+              <td>
+                <form method="post" action="/api/admin">
+                  <input type="hidden" name="action" value="academic" /><input type="hidden" name="userId" value={u.id} />
+                  <input type="hidden" name="value" value={u.academicVerified ? '0' : '1'} />
+                  <button class="text-xs underline">{u.academicVerified ? 'Yes (revoke)' : 'No (verify)'}</button>
+                </form>
+              </td>
+              <td>
+                <form method="post" action="/api/admin" class="flex gap-1">
+                  <input type="hidden" name="action" value="credits" /><input type="hidden" name="userId" value={u.id} />
+                  <input name="amount" type="number" step="1" placeholder="±" class="w-20 rounded border border-nature-700/30 px-1 text-xs" required />
+                  <input name="note" placeholder="note" maxlength="80" class="w-28 rounded border border-nature-700/30 px-1 text-xs" />
+                  <button class="text-xs underline">Apply</button>
+                </form>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold text-nature-900">API waitlist (latest 50)</h2>
+      <ul class="mt-2 text-sm">{waitlist.map(w => <li>{w.email} <span class="text-xs text-earth-700">· {w.use_cases ?? ''} · {w.created_at.slice(0, 10)}</span></li>)}</ul>
+    </section>
+  </article>
+</Layout>

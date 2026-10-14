@@ -1,0 +1,86 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { accountsEnv } from '../lib/accounts/server';
+import { enabledProviders } from '../lib/accounts/auth';
+
+export const prerender = false;
+
+const nextRaw = Astro.url.searchParams.get('next') ?? '/account';
+const next = nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/account';
+if (Astro.locals.user) return Astro.redirect(next);
+
+const env = accountsEnv(Astro.locals);
+const providers = env ? enabledProviders(env) : { google: false, microsoft: false, orcid: false };
+const error = Astro.url.searchParams.get('error');
+---
+
+<Layout title="Sign in" description="Sign in to your AEDIN account." noindex>
+  <article class="max-w-md mx-auto px-6 py-12">
+    <h1 class="text-2xl font-semibold text-nature-900">Sign in to AEDIN</h1>
+    <p class="text-sm text-earth-700 mt-2">
+      An account gives you API keys, credits for extraction and chat, and expert-review requests.
+      Browsing and the open data never need one.
+    </p>
+
+    {!env && <p class="mt-6 text-sm text-red-700">Accounts are not available yet.</p>}
+    {error && <p class="mt-6 text-sm text-red-700">Sign-in failed ({error}). Please try again.</p>}
+
+    {env && (
+      <div class="mt-8 flex flex-col gap-3" data-next={next} id="signin">
+        {providers.microsoft && <button type="button" data-provider="microsoft" class="sso">Continue with Microsoft (school or work)</button>}
+        {providers.google && <button type="button" data-provider="google" class="sso">Continue with Google</button>}
+
+        <form id="magic" class="mt-4 flex flex-col gap-2" novalidate>
+          <label for="email" class="text-sm font-medium text-nature-900">Or get a sign-in link by email</label>
+          <input id="email" name="email" type="email" required autocomplete="email" placeholder="you@university.edu"
+            class="rounded border border-nature-700/30 px-3 py-2 text-sm" />
+          <button type="submit" class="rounded bg-nature-700 px-4 py-2 text-sm font-medium text-white hover:bg-nature-900">Email me a link</button>
+        </form>
+        <p id="status" class="text-sm text-earth-700" role="status" aria-live="polite"></p>
+
+        {providers.orcid && (
+          <p class="text-xs text-earth-700 mt-4">
+            Have an ORCID iD? Sign in once with one of the options above, then link ORCID from your
+            account page. After that you can sign in with ORCID too.
+            <button type="button" data-provider="orcid" class="underline text-nature-700">Sign in with a linked ORCID iD</button>
+          </p>
+        )}
+        <p class="text-xs text-earth-700 mt-2">
+          School and university emails (.edu, .ac.*) and linked ORCID iDs qualify for academic pricing automatically.
+        </p>
+      </div>
+    )}
+  </article>
+</Layout>
+
+<style>
+  .sso { border: 1px solid rgb(0 0 0 / 0.2); border-radius: 0.375rem; padding: 0.5rem 1rem; font-size: 0.875rem; background: white; }
+  .sso:hover { background: rgb(0 0 0 / 0.04); }
+</style>
+
+<script>
+  const root = document.getElementById('signin');
+  const status = document.getElementById('status')!;
+  const next = root?.dataset.next ?? '/account';
+  const post = (path: string, body: unknown) =>
+    fetch(`/api/auth${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+
+  root?.querySelectorAll<HTMLButtonElement>('[data-provider]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      status.textContent = 'Redirecting…';
+      const res = await post('/sign-in/social', { provider: btn.dataset.provider, callbackURL: next, errorCallbackURL: '/login' });
+      const data = await res.json().catch(() => ({}));
+      if (data.url) location.href = data.url;
+      else status.textContent = data.message ?? 'Could not start sign-in.';
+    });
+  });
+
+  document.getElementById('magic')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const email = (document.getElementById('email') as HTMLInputElement).value.trim();
+    if (!email) return;
+    status.textContent = 'Sending…';
+    const res = await post('/sign-in/magic-link', { email, callbackURL: next, errorCallbackURL: '/login' });
+    status.textContent = res.ok ? `Check ${email} for a sign-in link (valid for 10 minutes).` : 'Could not send the link. Please try again.';
+  });
+</script>

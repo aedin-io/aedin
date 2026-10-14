@@ -1,0 +1,199 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { accountsEnv } from '../lib/accounts/server';
+import { enabledProviders } from '../lib/accounts/auth';
+import { balance, recentEntries } from '../lib/accounts/credits';
+import { listKeys } from '../lib/accounts/api-keys';
+import { getSubscription } from '../lib/accounts/billing';
+import { PLANS, TOPUP } from '../lib/accounts/plans';
+
+export const prerender = false;
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect('/login?next=/account');
+const env = accountsEnv(Astro.locals)!;
+const db = env.ACCOUNTS;
+
+const [credits, ledger, keys, sub, linked] = await Promise.all([
+  balance(db, user.id),
+  recentEntries(db, user.id, 15),
+  listKeys(db, user.id),
+  getSubscription(db, user.id),
+  db.prepare('SELECT providerId FROM account WHERE userId = ?').bind(user.id).all<{ providerId: string }>()
+    .then(r => (r.results ?? []).map(a => a.providerId)),
+]);
+const providers = enabledProviders(env);
+const plan = PLANS[sub.plan] ?? PLANS.free;
+const active = ['active', 'trialing', 'past_due'].includes(sub.status);
+const placeholderEmail = user.email.endsWith('@orcid.invalid');
+
+// A key created a moment ago is handed over once via a short-lived cookie.
+const newKey = Astro.cookies.get('aedin_newkey')?.value ?? null;
+if (newKey) Astro.cookies.delete('aedin_newkey', { path: '/account' });
+
+const flash = Astro.url.searchParams.get('checkout') === 'success'
+  ? 'Payment received. Credits appear here as soon as Stripe confirms it (usually a few seconds).'
+  : null;
+const error = Astro.url.searchParams.get('error');
+const reasonLabel: Record<string, string> = {
+  monthly_grant: 'Plan credits', period_reset: 'Unused plan credits reset', topup: 'Top-up',
+  extraction: 'Extraction', chat: 'Chat', api: 'API', review: 'Expert review', adjustment: 'Adjustment',
+};
+const fmt = (n: number) => n.toLocaleString('en-US');
+---
+
+<Layout title="Account" noindex>
+  <article class="max-w-3xl mx-auto px-6 py-10 space-y-10">
+    <header class="flex flex-wrap items-baseline justify-between gap-3">
+      <div>
+        <h1 class="text-2xl font-semibold text-nature-900">Your account</h1>
+        <p class="text-sm text-earth-700 mt-1">
+          {placeholderEmail ? user.name : user.email}
+          {user.academicVerified && <span class="ml-2 rounded bg-nature-50 px-2 py-0.5 text-xs text-nature-900 border border-nature-700/30">Academic verified</span>}
+          {user.role === 'admin' && <a href="/admin" class="ml-2 text-xs underline">Admin</a>}
+        </p>
+      </div>
+      <button id="signout" type="button" class="text-sm underline text-nature-700">Sign out</button>
+    </header>
+
+    {flash && <p class="rounded border border-nature-700/30 bg-nature-50 px-4 py-3 text-sm">{flash}</p>}
+    {error && <p class="rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
+    {placeholderEmail && (
+      <p class="rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm">
+        This account was created from an ORCID iD without an email address. Receipts go to the email you give Stripe at checkout.
+      </p>
+    )}
+
+    <section>
+      <h2 class="text-lg font-semibold text-nature-900">Plan and credits</h2>
+      <div class="mt-3 grid gap-4 sm:grid-cols-2">
+        <div class="rounded border border-nature-700/20 p-4">
+          <p class="text-xs uppercase tracking-wide text-earth-700">Plan</p>
+          <p class="text-xl font-semibold text-nature-900">{plan.name}</p>
+          <p class="text-xs text-earth-700 mt-1">
+            {active && sub.current_period_end ? `Renews ${sub.current_period_end.slice(0, 10)}` : sub.status === 'canceled' ? 'Canceled' : 'No subscription'}
+            {sub.status === 'past_due' && <span class="text-red-700"> · payment past due</span>}
+          </p>
+        </div>
+        <div class="rounded border border-nature-700/20 p-4">
+          <p class="text-xs uppercase tracking-wide text-earth-700">Credit balance</p>
+          <p class="text-xl font-semibold text-nature-900">{fmt(credits)}</p>
+          <p class="text-xs text-earth-700 mt-1">Plan credits reset each billing period; top-ups never expire.</p>
+        </div>
+      </div>
+
+      <div class="mt-4 flex flex-wrap gap-3">
+        {sub.stripe_customer_id && (
+          <form method="post" action="/api/billing/portal">
+            <button class="rounded border border-nature-700/40 px-3 py-1.5 text-sm">Manage billing</button>
+          </form>
+        )}
+        <form method="post" action="/api/billing/checkout" class="flex items-center gap-2">
+          <input type="hidden" name="kind" value="topup" />
+          <select name="quantity" class="rounded border border-nature-700/30 px-2 py-1.5 text-sm" aria-label="Top-up amount">
+            {[1, 2, 5, 10].map(q => <option value={q}>{fmt(TOPUP.credits * q)} credits · ${TOPUP.usd * q}</option>)}
+          </select>
+          <button class="rounded bg-nature-700 px-3 py-1.5 text-sm text-white">Buy credits</button>
+        </form>
+      </div>
+
+      {!active && (
+        <div class="mt-6 grid gap-4 sm:grid-cols-2">
+          {(['researcher', 'pro'] as const).map(id => {
+            const p = PLANS[id];
+            const half = user.academicVerified;
+            return (
+              <div class="rounded border border-nature-700/20 p-4">
+                <p class="font-semibold text-nature-900">{p.name}</p>
+                <p class="text-sm text-earth-700">
+                  {half ? <><s>${p.monthlyUsd}</s> ${(p.monthlyUsd! / 2).toFixed(2)}</> : <>${p.monthlyUsd}</>}/month
+                  or {half ? `$${p.annualUsd! / 2}` : `$${p.annualUsd}`}/year
+                </p>
+                <ul class="mt-2 text-xs text-earth-700 list-disc pl-4">{p.features.map(f => <li>{f}</li>)}</ul>
+                <div class="mt-3 flex gap-2">
+                  {(['monthly', 'annual'] as const).map(interval => (
+                    <form method="post" action="/api/billing/checkout">
+                      <input type="hidden" name="kind" value="plan" />
+                      <input type="hidden" name="plan" value={id} />
+                      <input type="hidden" name="interval" value={interval} />
+                      <button class="rounded bg-nature-700 px-3 py-1.5 text-xs text-white">{interval === 'monthly' ? 'Monthly' : 'Annual'}</button>
+                    </form>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {ledger.length > 0 && (
+        <table class="mt-6 w-full text-sm">
+          <thead><tr class="text-left text-xs text-earth-700"><th class="py-1">Date</th><th>Activity</th><th class="text-right">Credits</th></tr></thead>
+          <tbody>
+            {ledger.map(e => (
+              <tr class="border-t border-nature-700/10">
+                <td class="py-1 text-earth-700">{e.created_at.slice(0, 10)}</td>
+                <td>{reasonLabel[e.reason] ?? e.reason}</td>
+                <td class={`text-right tabular-nums ${e.delta < 0 ? 'text-earth-700' : 'text-nature-900'}`}>{e.delta > 0 ? '+' : ''}{fmt(e.delta)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
+
+    <section id="api-keys">
+      <h2 class="text-lg font-semibold text-nature-900">API keys</h2>
+      <p class="text-sm text-earth-700 mt-1">Send as <code>Authorization: Bearer &lt;key&gt;</code>. The metered API is opening soon; keys created now will work with it.</p>
+      {newKey && (
+        <div class="mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm">
+          <p class="font-medium">Copy your new key now. It won't be shown again.</p>
+          <code class="mt-1 block break-all select-all">{newKey}</code>
+        </div>
+      )}
+      <ul class="mt-3 divide-y divide-nature-700/10 text-sm">
+        {keys.map(k => (
+          <li class="flex items-center justify-between py-2">
+            <span><code>{k.prefix}…</code> · {k.name} <span class="text-xs text-earth-700">· created {k.created_at.slice(0, 10)}{k.last_used_at ? ` · last used ${k.last_used_at.slice(0, 10)}` : ''}</span></span>
+            <form method="post" action="/api/keys"><input type="hidden" name="action" value="revoke" /><input type="hidden" name="id" value={k.id} />
+              <button class="text-xs text-red-700 underline">Revoke</button></form>
+          </li>
+        ))}
+      </ul>
+      <form method="post" action="/api/keys" class="mt-3 flex gap-2">
+        <input type="hidden" name="action" value="create" />
+        <input name="name" maxlength="64" placeholder="Key name, e.g. laptop" class="rounded border border-nature-700/30 px-2 py-1.5 text-sm" />
+        <button class="rounded bg-nature-700 px-3 py-1.5 text-sm text-white">Create key</button>
+      </form>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold text-nature-900">Sign-in methods</h2>
+      <ul class="mt-2 text-sm text-earth-700 list-disc pl-5">
+        {linked.length ? linked.map(p => <li>{p === 'credential' ? 'Email' : p}</li>) : <li>Email link</li>}
+      </ul>
+      <div class="mt-3 flex flex-wrap gap-2" id="link-buttons">
+        {providers.orcid && !linked.includes('orcid') && <button type="button" data-link="orcid" class="rounded border border-nature-700/40 px-3 py-1.5 text-sm">Link ORCID iD (verifies academic status)</button>}
+        {providers.microsoft && !linked.includes('microsoft') && <button type="button" data-link="microsoft" class="rounded border border-nature-700/40 px-3 py-1.5 text-sm">Link Microsoft</button>}
+        {providers.google && !linked.includes('google') && <button type="button" data-link="google" class="rounded border border-nature-700/40 px-3 py-1.5 text-sm">Link Google</button>}
+      </div>
+    </section>
+  </article>
+</Layout>
+
+<script>
+  const post = (path: string, body: unknown = {}) =>
+    fetch(`/api/auth${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  document.getElementById('signout')?.addEventListener('click', async () => {
+    await post('/sign-out');
+    location.href = '/';
+  });
+  document.querySelectorAll<HTMLButtonElement>('[data-link]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const res = await post('/link-social', { provider: btn.dataset.link, callbackURL: '/account' });
+      const data = await res.json().catch(() => ({}));
+      if (data.url) location.href = data.url;
+      else alert(data.message ?? 'Could not start linking.');
+    });
+  });
+</script>

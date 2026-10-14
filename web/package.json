@@ -20,13 +20,15 @@
   },
   "dependencies": {
     "astro": "^6.2.2",
+    "better-auth": "^1.7.7",
     "better-sqlite3": "^11.5.0",
     "cytoscape": "^3.33.3",
     "cytoscape-fcose": "^2.2.0",
     "d3-chord": "^3.0.1",
     "d3-hierarchy": "^3.1.2",
     "d3-selection": "^3.0.0",
-    "d3-shape": "^3.2.0"
+    "d3-shape": "^3.2.0",
+    "stripe": "^23.0.0"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.0",

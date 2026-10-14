@@ -121,3 +121,6 @@ backend/router-eval-*.json
 
 # Pipeline cost measurement reports (backend/measure-pipeline-cost.js)
 backend/cost-measurements/
+
+# Local Worker secrets for `wrangler pages dev` (never commit)
+.dev.vars

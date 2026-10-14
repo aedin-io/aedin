@@ -5,8 +5,11 @@
 // v13 changed this to a non-generic Runtime — pinned to v12 to avoid
 // workerd startup crash in WSL2 (require_dist bug in @cloudflare/vite-plugin).
 type D1Database = import('@cloudflare/workers-types').D1Database;
-type Runtime = import('@astrojs/cloudflare').Runtime<{ DB: D1Database }>;
+type Runtime = import('@astrojs/cloudflare').Runtime<{ DB: D1Database; ACCOUNTS?: D1Database }>;
 
 declare namespace App {
-  interface Locals extends Runtime {}
+  interface Locals extends Runtime {
+    /** Signed-in user, resolved in middleware when a session cookie is present. */
+    user?: import('./lib/accounts/server').SessionUser | null;
+  }
 }

@@ -1,5 +1,6 @@
 import { defineMiddleware } from 'astro:middleware';
 import { isBlockedForAi } from './lib/ai-agents';
+import { resolveUser } from './lib/accounts/server';
 
 // --- AI access policy -------------------------------------------------------
 // Retrieval agents (AI search answering a person's query) get the full site;
@@ -37,6 +38,9 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
       },
     );
   }
+
+  // Accounts: resolve the session for SSR routes (no-op without a session cookie).
+  ctx.locals.user = await resolveUser(ctx.locals, ctx.request);
 
   const response = await next();
   const links = [...BASE_LINKS];

@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { USE_CASES } from '../lib/waitlist';
+import { PLANS } from '../lib/accounts/plans';
 // Public Turnstile site key (build-time, safe to expose). When unset, the
 // waitlist form renders without the widget and the endpoint relies on the
 // honeypot only — see web/src/lib/waitlist.ts::verifyTurnstile.
@@ -80,6 +81,27 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITEKEY;
         </button>
         <p id="wl-msg" class="text-sm" role="status" aria-live="polite"></p>
       </form>
+    </section>
+    <section id="pricing" class="mt-10 scroll-mt-20">
+      <h2 class="text-xl font-semibold text-nature-900">Plans</h2>
+      <p class="text-sm text-earth-700 mt-1">
+        The data is free and stays free. Plans pay for live access, credits and services. One credit is about
+        one cent; credits cover API calls, extraction of your own documents, chat answers and expert review.
+        Verified academics (school email or ORCID) get half price.
+      </p>
+      <div class="mt-4 grid gap-4 sm:grid-cols-2">
+        {Object.values(PLANS).map(p => (
+          <div class="rounded border border-nature-700/20 p-4">
+            <p class="font-semibold text-nature-900">{p.name}</p>
+            <p class="text-sm text-earth-700">
+              {p.monthlyUsd === 0 ? 'Free' : p.monthlyUsd ? `$${p.monthlyUsd}/month or $${p.annualUsd}/year` : `From $${p.annualUsd?.toLocaleString('en-US')}/year`}
+            </p>
+            <p class="text-xs text-earth-700 mt-1">{p.blurb}</p>
+            <ul class="mt-2 text-xs text-earth-700 list-disc pl-4">{p.features.map(f => <li>{f}</li>)}</ul>
+          </div>
+        ))}
+      </div>
+      <p class="text-sm mt-4"><a href="/account" class="text-nature-700 underline">Create an account</a> · Institutional: <a href="mailto:contact@aedin.io" class="text-nature-700 underline">contact@aedin.io</a></p>
     </section>
   </article>
 

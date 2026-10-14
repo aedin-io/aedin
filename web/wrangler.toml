@@ -15,3 +15,12 @@ database_id = "c78eddce-2770-465c-86fb-cfc6dbe45ae3"
 # Waitlist admin notifications post to a Discord webhook (free, no Workers-Paid
 # plan needed). The webhook URL is the Pages secret WAITLIST_WEBHOOK_URL — set
 # via `wrangler pages secret put`, never committed. See web/src/pages/api/waitlist.ts.
+
+# Accounts database (users, billing, credits, API keys) — deliberately separate
+# from the corpus DB so corpus rebuilds can never touch it. Create it, apply
+# d1/accounts.sql, then uncomment with the real id (docs/accounts-setup.md).
+# Until then the site runs with accounts disabled (/login says so).
+# [[d1_databases]]
+# binding = "ACCOUNTS"
+# database_name = "aedin-accounts"
+# database_id = "<from: wrangler d1 create aedin-accounts>"

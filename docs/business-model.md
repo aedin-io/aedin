@@ -61,7 +61,7 @@ In rough order of revenue potential:
 | Researcher | $15/mo or $150/yr (edu half price) | 2,000 credits/mo (~80 pages or 1,000 chats), live API, MCP, 1 private workspace | Academics, hobby developers |
 | Pro | $79/mo, 3 seats | 12,000 credits/mo (~25 papers), shared workspaces, CSV/GloBI export of private corpora | Consultants, ag startups, labs |
 | Institutional | from $5k/yr (matches `terms.astro:7`) | Custom credit pool, SSO, SLA, bulk extraction runs, human-verification add-on | Extension services, ag companies |
-| Top-up | $10 / 1,000 credits | Credits don't expire for 12 months | Anyone |
+| Top-up | $10 / 1,000 credits | Top-up credits never expire; plan credits reset each billing period | Anyone |
 
 **How to price extraction as a service:**
 - Self-serve: charge **per page**, not per paper. Page count is known at upload, is fair across short and long papers, and shows the cost up front: "This 32-page PDF will use 800 credits." Reuse the cost-guard preflight to give that quote before the run.
@@ -87,8 +87,8 @@ In rough order of revenue potential:
 - Chat is the only paid surface that growers and extension agents (non-developers) will use. Developers will use MCP from their own Claude/ChatGPT. That MCP path is also the right answer to "private LLMs": they reach AEDIN through a paid, metered door rather than by scraping.
 - Bundling chat into credits, rather than selling it as its own plan, keeps the pricing simple and the risk low. If nobody uses chat, it costs nothing.
 
-**Logins (none exist today; there is no users or auth code in `backend/lib` or `web/d1/schema.sql`):**
-- **Better Auth** with its D1/SQLite adapter, running in the existing Astro SSR worker. It's open-source and self-hosted (fits the ethos) and has no per-user fees. Use email magic links and Google/ORCID OAuth. ORCID matters to the academic audience and can verify the edu discount.
+**Logins (built in Phase 2; setup in `docs/accounts-setup.md`):**
+- **Better Auth** with its D1/SQLite adapter, running in the existing Astro SSR worker. It's open-source and self-hosted (fits the ethos) and has no per-user fees. Sign-in uses email magic links, Google and Microsoft (school/work accounts). ORCID is link-only, because it returns no email, and linking it verifies academic status. Passwords are deliberately left out: magic links cover everyone with an email address, without reset flows or credential-breach risk.
 - **Stripe Billing**: Checkout plus Customer Portal for subscriptions, and Stripe Meters for credit overage. A webhook writes the plan and credit grants to D1.
 - API keys are per user, hashed in D1. The API, MCP and chat endpoints check the key, then debit a `credit_ledger` table in a single atomic D1 statement.
 - Migrate the waitlist (`waitlist` table): invite those signups first and offer them a launch discount.
